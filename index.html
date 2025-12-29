@@ -371,12 +371,30 @@
             gap: var(--row-gap);
         }
 
-        .row.selectable { cursor: pointer; background-color: rgba(187, 134, 252, 0.25); border-color: var(--accent-color); border-width: 3px; box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); }
-            50% { box-shadow: 0 0 24px rgba(187, 134, 252, 0.8); }
+        .row.selectable { background-color: rgba(187, 134, 252, 0.15); border-color: var(--accent-color); border-width: 3px; box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); position: relative; }
+        
+        .buy-row-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
         }
-        .row.selectable:hover { border-color: rgba(187, 134, 252, 1); }
+        
+        .buy-row-btn:hover {
+            background: rgba(187, 134, 252, 1);
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 4px 12px rgba(187, 134, 252, 0.6);
+        }
         .row.full-danger { border: 1px solid rgba(207, 102, 121, 0.3); background: linear-gradient(90deg, rgba(207,102,121,0.05) 0%, transparent 100%); }
 
         .slot {
@@ -536,9 +554,13 @@
                     <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">Jogadores na sala:</div>
                     <div id="players-list-content"></div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn" style="flex: 1; margin-top: 10px;" id="add-bot-btn" onclick="addBotToRoom()">Adicionar Bot</button>
-                    <button class="btn" style="flex: 1; margin-top: 10px;" id="remove-bot-btn" onclick="removeBotFromRoom()">Remover Bot</button>
+                <div style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px; text-align: center;">🤖 Gerenciar Bots</div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" style="flex: 1;" id="add-bot-btn" onclick="addBotToRoom()">➕ Adicionar</button>
+                        <button class="btn" style="flex: 1;" id="remove-bot-btn" onclick="removeBotFromRoom()">➖ Remover</button>
+                    </div>
+                    <div id="bot-count" style="text-align: center; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary);"></div>
                 </div>
                 <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" id="start-game-btn" onclick="startGame()" disabled>Iniciar Jogo</button>
             </div>
@@ -571,10 +593,10 @@
                 <div id="status-bar">Aguardando jogadores...</div>
                 <div class="bots-action-area" id="bots-action-area"></div>
                 <div class="board" id="board">
-                    <div class="row" id="row-0" onclick="handleRowClick(0)"></div>
-                    <div class="row" id="row-1" onclick="handleRowClick(1)"></div>
-                    <div class="row" id="row-2" onclick="handleRowClick(2)"></div>
-                    <div class="row" id="row-3" onclick="handleRowClick(3)"></div>
+                    <div class="row" id="row-0"></div>
+                    <div class="row" id="row-1"></div>
+                    <div class="row" id="row-2"></div>
+                    <div class="row" id="row-3"></div>
                 </div>
                 <div class="player-area">
                     <div style="margin-bottom:5px; color:var(--text-secondary); font-size:0.8rem; text-align:center;">SUA MÃO</div>
@@ -860,6 +882,20 @@
             div.textContent = p.name + (p.isBot ? ' 🤖' : '');
             container.appendChild(div);
         });
+        
+        // Atualizar contador de bots
+        const botCount = playersList.filter(p => p.isBot).length;
+        const humanCount = playersList.length - botCount;
+        const botCountEl = document.getElementById('bot-count');
+        if (botCountEl) {
+            botCountEl.textContent = `${humanCount} jogador(es) • ${botCount} bot(s)`;
+        }
+        
+        // Desabilitar botões se necessário
+        const addBotBtn = document.getElementById('add-bot-btn');
+        const removeBotBtn = document.getElementById('remove-bot-btn');
+        if (addBotBtn) addBotBtn.disabled = playersList.length >= 4;
+        if (removeBotBtn) removeBotBtn.disabled = botCount === 0;
     }
 
     function copyLink() {
@@ -1057,15 +1093,38 @@
     
     function makeBotPlay(botIndex) {
         const bot = players[botIndex];
-        if (!bot || !bot.isBot || bot.lastPlayed) return;
+        if (!bot || !bot.isBot || bot.lastPlayed) {
+            console.log('makeBotPlay - skipping:', bot ? `${bot.name} (isBot: ${bot.isBot}, lastPlayed: ${bot.lastPlayed})` : 'bot not found');
+            return;
+        }
+        
         const chosenCard = chooseBotCard(bot.hand, boardRows);
-        if (!chosenCard) return;
+        if (!chosenCard) {
+            console.log('makeBotPlay - no card chosen for bot', bot.name);
+            return;
+        }
+        
+        console.log('makeBotPlay - bot', bot.name, 'playing card', chosenCard.number);
+        
         const cardIndex = bot.hand.findIndex(c => c.number === chosenCard.number);
         if (cardIndex !== -1) {
             bot.hand.splice(cardIndex, 1);
         }
         bot.lastPlayed = chosenCard;
+        
+        // Enviar jogada do bot para o servidor
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'PLAY_CARD',
+                cardIndex: cardIndex,
+                card: chosenCard,
+                fromPlayerId: bot.id
+            }
+        }));
+        
         updateUI();
+        
         if (isHost) {
             setTimeout(() => checkAllPlayersPlayed(), 500);
         }
@@ -1644,6 +1703,16 @@
                     rowDiv.appendChild(sixthSlot);
                 }
             }
+            
+            // Adicionar botão de COMPRAR se o jogador precisa escolher uma fileira
+            if (gameState === "CHOOSE_ROW" && pendingPlayerCard) {
+                const points = rowCards.reduce((acc, c) => acc + c.tdb, 0);
+                const buyBtn = document.createElement("button");
+                buyBtn.className = "btn buy-row-btn";
+                buyBtn.textContent = `COMPRAR (${points} pts)`;
+                buyBtn.onclick = () => handleRowClick(i);
+                rowDiv.appendChild(buyBtn);
+            }
         }
 
         const handDiv = document.getElementById("player-hand");
@@ -1660,6 +1729,8 @@
         if (sbList) {
             sbList.innerHTML = "";
             let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            console.log('updateUI - scoreboard players:', sortedPlayers.map(p => ({ name: p.name, isBot: p.isBot, score: p.score })));
             
             sortedPlayers.forEach((p, idx) => {
                 const entry = document.createElement("div");
