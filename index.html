@@ -1313,6 +1313,11 @@
                     if (player) player.score += payload.points;
                 }
                 updateUI();
+                
+                // Se sou o host e outro jogador escolheu, continuar processando
+                if (isHost && payload.playerId !== playerId) {
+                    onRowSelectionComplete();
+                }
             }
         } else if (payload.action === 'CHOOSE_ROW_REQUEST') {
             // Outro jogador precisa escolher uma fileira - verificar se sou eu
@@ -1383,32 +1388,66 @@
     }
     
     // Processar o turno - colocar cartas nas fileiras
+    let pendingRowSelections = 0; // Contador de jogadores que precisam escolher fileira
+    let cardsToProcess = []; // Cartas a processar
+    let currentCardIndex = 0; // Índice da carta atual sendo processada
+    
     function processRound() {
         console.log('processRound - processing cards');
         
         // Ordenar jogadores pela carta jogada (menor para maior)
-        const playedCards = players.map((p, idx) => ({
+        cardsToProcess = players.map((p, idx) => ({
             playerIndex: idx,
             playerId: p.id,
             card: p.lastPlayed
         })).sort((a, b) => a.card.number - b.card.number);
         
-        // Processar cada carta em ordem
-        let delay = 0;
-        playedCards.forEach((play, i) => {
-            setTimeout(() => {
-                placeCardOnBoard(play.playerIndex, play.card);
-                
-                // Se for a última carta, finalizar o turno
-                if (i === playedCards.length - 1) {
-                    setTimeout(() => finishTurn(), 800);
-                }
-            }, delay);
-            delay += 800;
-        });
+        currentCardIndex = 0;
+        pendingRowSelections = 0;
+        
+        // Processar a primeira carta
+        processNextCard();
+    }
+    
+    function processNextCard() {
+        if (currentCardIndex >= cardsToProcess.length) {
+            // Todas as cartas foram processadas
+            // Só finalizar o turno se não houver seleções pendentes
+            if (pendingRowSelections === 0) {
+                setTimeout(() => finishTurn(), 500);
+            }
+            return;
+        }
+        
+        const play = cardsToProcess[currentCardIndex];
+        console.log('processNextCard - processing card', currentCardIndex, 'player:', play.playerIndex, 'card:', play.card.number);
+        
+        const needsRowSelection = placeCardOnBoard(play.playerIndex, play.card);
+        
+        if (needsRowSelection) {
+            // Jogador precisa escolher fileira - NÃO avançar para a próxima carta
+            // A próxima carta será processada quando o jogador escolher
+            pendingRowSelections++;
+            console.log('processNextCard - waiting for row selection, pendingRowSelections:', pendingRowSelections);
+        } else {
+            // Carta foi colocada normalmente - avançar para a próxima
+            currentCardIndex++;
+            setTimeout(() => processNextCard(), 600);
+        }
+    }
+    
+    // Função chamada quando um jogador termina de escolher a fileira
+    function onRowSelectionComplete() {
+        pendingRowSelections--;
+        currentCardIndex++;
+        console.log('onRowSelectionComplete - pendingRowSelections:', pendingRowSelections, 'currentCardIndex:', currentCardIndex);
+        
+        // Continuar processando as próximas cartas
+        setTimeout(() => processNextCard(), 600);
     }
     
     // Colocar uma carta no tabuleiro
+    // Retorna true se o jogador precisa escolher uma fileira (humano), false caso contrário
     function placeCardOnBoard(playerIndex, card) {
         console.log('placeCardOnBoard - player:', playerIndex, 'card:', card.number);
         
@@ -1460,6 +1499,8 @@
                         points: minPoints
                     }
                 }));
+                
+                return false; // Bot não precisa de seleção manual
             } else {
                 // Para jogadores HUMANOS, enviar mensagem para que ELES escolham
                 console.log('placeCardOnBoard - human player needs to choose row, playerIndex:', playerIndex, 'myPlayerIndex:', myPlayerIndex);
@@ -1473,7 +1514,7 @@
                     setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
                     startChooseRowTimer(); // Iniciar timer de 30 segundos
                     updateUI();
-                    return;
+                    return true; // Precisa de seleção manual
                 } else {
                     // Se for OUTRO jogador humano, enviar mensagem para ele escolher
                     console.log('placeCardOnBoard - sending CHOOSE_ROW_REQUEST to player:', currentPlayer.id);
@@ -1486,7 +1527,7 @@
                             playerIndex: playerIndex
                         }
                     }));
-                    return; // Aguardar resposta do jogador
+                    return true; // Aguardar resposta do jogador
                 }
             }
         } else {
@@ -1526,6 +1567,7 @@
         }
         
         updateUI();
+        return false; // Carta colocada normalmente, não precisa de seleção
     }
     
     // Finalizar o turno
@@ -1795,6 +1837,11 @@
         }
         
         updateUI();
+        
+        // Notificar que a seleção foi concluída para continuar processando as cartas
+        if (isHost) {
+            onRowSelectionComplete();
+        }
     }
     
     // Função antiga handleRowClick - mantida para compatibilidade
