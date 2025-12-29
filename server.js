@@ -102,7 +102,7 @@ wss.on('connection', (ws) => {
                                 payload: {
                                     playerId,
                                     playerName: joinPlayerName,
-                                    players: room.players.map(pl => ({ id: pl.id, name: pl.name }))
+                                    players: room.players.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot || false }))
                                 }
                             }));
                         }
@@ -155,11 +155,14 @@ wss.on('connection', (ws) => {
                     }
 
                     console.log(`Jogo iniciado na sala ${roomId}`);
+                    // Se o host enviou uma lista de jogadores (incluindo bots), use-a
+                    const gamePlayers = payload.players || startRoom.players.map(pl => ({ id: pl.id, name: pl.name, isBot: false }));
+                    
                     startRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
                             p.ws.send(JSON.stringify({
                                 type: 'GAME_STARTED',
-                                payload: { players: startRoom.players.map(pl => ({ id: pl.id, name: pl.name })) }
+                                payload: { players: gamePlayers }
                             }));
                         }
                     });

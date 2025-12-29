@@ -799,18 +799,21 @@
                 break;
 
             case 'GAME_STARTED':
-                // Preservar as mãos se já existirem (para o host)
-                const existingHands = players.map(p => p.hand || []);
-                players = data.payload.players.map((p, idx) => ({
-                    id: p.id,
-                    name: p.name,
-                    isBot: false,
-                    hand: existingHands[idx] || [],
-                    score: 0,
-                    lastPlayed: null
-                }));
+                // Preservar as mãos e o status de bot se já existirem (para o host)
+                const existingPlayers = [...players];
+                players = data.payload.players.map((p, idx) => {
+                    const existing = existingPlayers.find(ep => ep.id === p.id);
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        isBot: existing ? existing.isBot : false,
+                        hand: existing ? (existing.hand || []) : [],
+                        score: 0,
+                        lastPlayed: null
+                    };
+                });
                 myPlayerIndex = players.findIndex(p => p.id === playerId);
-                console.log('GAME_STARTED - myPlayerIndex:', myPlayerIndex, 'playerId:', playerId);
+                console.log('GAME_STARTED - myPlayerIndex:', myPlayerIndex, 'playerId:', playerId, 'players:', players);
                 startNewRound();
                 break;
 
@@ -1008,7 +1011,9 @@
         }
         ws.send(JSON.stringify({
             type: 'START_GAME',
-            payload: {}
+            payload: {
+                players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
+            }
         }));
     }
     
