@@ -173,11 +173,16 @@ wss.on('connection', (ws) => {
                     const botRoom = rooms.get(roomId);
                     if (botRoom.hostId !== playerId) return;
 
-                    // Notificar todos os jogadores sobre a nova lista (incluindo bots)
+                    console.log('UPDATE_BOTS - broadcasting to all players in room', roomId);
+                    console.log('UPDATE_BOTS - players list:', payload.players.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+
+                    // Notificar TODOS os jogadores sobre a nova lista (incluindo bots)
+                    // Isso inclui o host também para garantir consistência
                     botRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            console.log('UPDATE_BOTS - sending to player:', p.name);
                             p.ws.send(JSON.stringify({
-                                type: 'PLAYER_JOINED',
+                                type: 'BOTS_UPDATED',
                                 payload: {
                                     players: payload.players
                                 }

@@ -248,20 +248,263 @@
             display: flex;
         }
 
-        /* --- Responsividade --- */
-        @media (max-width: 768px) {
+        /* --- Responsividade Tablet --- */
+        @media (max-width: 900px) {
             :root {
-                --card-w: 38px;
-                --card-h: 58px;
-                --row-gap: 4px;
-                --row-h: 74px;
+                --card-w: 42px;
+                --card-h: 64px;
+                --row-gap: 5px;
+                --row-h: 80px;
                 --row-padding: 6px;
             }
-            .lobby-container {
-                padding: 25px;
+            
+            .main-layout {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 60px);
             }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+                padding: 10px;
+            }
+            
+            .scoreboard-title {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .score-entry {
+                min-width: 120px;
+            }
+        }
+        
+        /* --- Responsividade Mobile --- */
+        @media (max-width: 768px) {
+            :root {
+                --card-w: 36px;
+                --card-h: 54px;
+                --row-gap: 3px;
+                --row-h: 68px;
+                --row-padding: 4px;
+            }
+            
+            body {
+                overflow-y: auto;
+                height: auto;
+                min-height: 100vh;
+            }
+            
+            .lobby-container {
+                padding: 20px;
+                width: 95%;
+            }
+            
             .lobby-title {
-                font-size: 1.5rem;
+                font-size: 1.4rem;
+            }
+            
+            .lobby-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            #game-screen {
+                height: auto;
+                min-height: 100vh;
+                padding-bottom: 20px;
+            }
+            
+            .main-layout {
+                flex-direction: column;
+                height: auto;
+                width: 100%;
+                padding: 0 5px;
+                gap: 10px;
+            }
+            
+            .game-area {
+                width: 100%;
+                order: 1;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                order: 2;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 8px;
+                padding: 10px;
+            }
+            
+            .scoreboard-title {
+                width: 100%;
+                font-size: 0.9rem;
+            }
+            
+            .score-entry {
+                min-width: 100px;
+                padding: 6px;
+                font-size: 0.75rem;
+            }
+            
+            .score-name {
+                max-width: 70px;
+            }
+            
+            .board {
+                padding: 8px;
+                width: 100%;
+                overflow-x: auto;
+            }
+            
+            .row {
+                width: calc((6 * var(--card-w)) + (5 * var(--row-gap)) + (2 * var(--row-padding)));
+                min-width: fit-content;
+            }
+            
+            .row-wrapper {
+                gap: 8px;
+                margin-bottom: 6px;
+            }
+            
+            .radio-label {
+                width: 24px;
+                height: 24px;
+            }
+            
+            #status-bar {
+                font-size: 0.8rem;
+                padding: 6px;
+                min-height: 32px;
+            }
+            
+            header h1 {
+                font-size: 1.1rem;
+            }
+            
+            .subtitle {
+                font-size: 0.65rem;
+            }
+            
+            .card-number {
+                font-size: 0.95rem;
+            }
+            
+            .card-dots {
+                font-size: 4px;
+                line-height: 4px;
+            }
+            
+            .hand-container {
+                padding: 10px;
+            }
+            
+            .hand-title {
+                font-size: 0.7rem;
+            }
+            
+            .hand {
+                gap: 4px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .hand .card {
+                cursor: pointer;
+            }
+            
+            .bots-action-area {
+                min-height: 24px;
+            }
+            
+            .bot-action-card {
+                font-size: 0.7rem;
+                padding: 3px 8px;
+            }
+            
+            .choose-row-btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .timer-display {
+                font-size: 1rem;
+            }
+        }
+        
+        /* --- Responsividade Mobile Pequeno --- */
+        @media (max-width: 480px) {
+            :root {
+                --card-w: 32px;
+                --card-h: 48px;
+                --row-gap: 2px;
+                --row-h: 60px;
+                --row-padding: 3px;
+            }
+            
+            .lobby-container {
+                padding: 15px;
+            }
+            
+            .lobby-title {
+                font-size: 1.2rem;
+            }
+            
+            .input-group input {
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.85rem;
+            }
+            
+            .card-number {
+                font-size: 0.85rem;
+            }
+            
+            .score-entry {
+                min-width: 80px;
+                padding: 5px;
+                font-size: 0.7rem;
+            }
+            
+            .score-name {
+                max-width: 55px;
+            }
+            
+            .radio-label {
+                width: 20px;
+                height: 20px;
+            }
+            
+            .row-radio:checked + .radio-label::after {
+                width: 8px;
+                height: 8px;
+            }
+            
+            header h1 {
+                font-size: 1rem;
+            }
+            
+            #status-bar {
+                font-size: 0.75rem;
             }
         }
 
@@ -826,6 +1069,14 @@
             case 'ERROR':
                 showError(data.payload.message);
                 break;
+                
+            case 'BOTS_UPDATED':
+                console.log('BOTS_UPDATED - received new players list:', data.payload.players.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
         }
     }
 
@@ -1112,7 +1363,12 @@
         currentTurn = 1;
         gameState = "SELECT";
         updateUI();
-        setStatus("Aguardando jogadas...", "action");
+        setStatus("Sua vez - escolha uma carta", "action");
+        
+        // IMPORTANTE: Fazer bots jogarem automaticamente no início da rodada
+        if (isHost) {
+            setTimeout(() => triggerBotPlays(), 1000);
+        }
     }
 
     // IA para bots - escolhe uma carta estrategica
@@ -1140,24 +1396,52 @@
     
     function makeBotPlay(botIndex) {
         const bot = players[botIndex];
-        if (!bot || !bot.isBot || bot.lastPlayed) {
-            console.log('makeBotPlay - skipping:', bot ? `${bot.name} (isBot: ${bot.isBot}, lastPlayed: ${bot.lastPlayed})` : 'bot not found');
+        
+        // Validações de segurança
+        if (!bot) {
+            console.log('makeBotPlay - bot not found at index', botIndex);
+            return;
+        }
+        
+        if (!bot.isBot) {
+            console.log('makeBotPlay - player is not a bot:', bot.name);
+            return;
+        }
+        
+        if (bot.lastPlayed) {
+            console.log('makeBotPlay - bot already played:', bot.name, bot.lastPlayed.number);
+            return;
+        }
+        
+        if (!bot.hand || bot.hand.length === 0) {
+            console.log('makeBotPlay - bot has no cards:', bot.name);
             return;
         }
         
         const chosenCard = chooseBotCard(bot.hand, boardRows);
         if (!chosenCard) {
-            console.log('makeBotPlay - no card chosen for bot', bot.name);
+            console.log('makeBotPlay - no card chosen for bot', bot.name, '- hand:', bot.hand);
+            // Se não conseguiu escolher, pegar a primeira carta
+            if (bot.hand.length > 0) {
+                const fallbackCard = bot.hand[0];
+                console.log('makeBotPlay - using fallback card:', fallbackCard.number);
+                executeBotPlay(bot, fallbackCard, 0);
+            }
             return;
         }
         
         console.log('makeBotPlay - bot', bot.name, 'playing card', chosenCard.number);
         
         const cardIndex = bot.hand.findIndex(c => c.number === chosenCard.number);
-        if (cardIndex !== -1) {
+        executeBotPlay(bot, chosenCard, cardIndex);
+    }
+    
+    function executeBotPlay(bot, card, cardIndex) {
+        // Remover carta da mão do bot
+        if (cardIndex !== -1 && cardIndex < bot.hand.length) {
             bot.hand.splice(cardIndex, 1);
         }
-        bot.lastPlayed = chosenCard;
+        bot.lastPlayed = card;
         
         // Enviar jogada do bot para o servidor
         ws.send(JSON.stringify({
@@ -1165,15 +1449,16 @@
             payload: {
                 action: 'PLAY_CARD',
                 cardIndex: cardIndex,
-                card: chosenCard,
+                card: card,
                 fromPlayerId: bot.id
             }
         }));
         
         updateUI();
         
+        // Verificar se todos jogaram
         if (isHost) {
-            setTimeout(() => checkAllPlayersPlayed(), 500);
+            setTimeout(() => checkAllPlayersPlayed(), 300);
         }
     }
 
@@ -1215,13 +1500,9 @@
         updateUI();
         setStatus("Sua vez - escolha uma carta", "action");
         
-        // Fazer bots jogarem automaticamente
+        // Fazer bots jogarem automaticamente (apenas o host controla os bots)
         if (isHost) {
-            players.forEach((p, idx) => {
-                if (p.isBot && !p.lastPlayed) {
-                    setTimeout(() => makeBotPlay(idx), 500 + (idx * 800));
-                }
-            });
+            setTimeout(() => triggerBotPlays(), 800);
         }
     }
 
@@ -1319,7 +1600,12 @@
             currentTurn++;
             gameState = "SELECT";
             updateUI();
-            setStatus("Sua vez", "action");
+            setStatus("Sua vez - escolha uma carta", "action");
+            
+            // Fazer bots jogarem automaticamente (apenas o host controla os bots)
+            if (isHost) {
+                setTimeout(() => triggerBotPlays(), 800);
+            }
         } else if (payload.action === 'RESTART_REQUEST') {
             if (confirm(`O jogador ${payload.fromPlayerName} deseja reiniciar o jogo. Você aceita?`)) {
                 ws.send(JSON.stringify({
@@ -1613,18 +1899,39 @@
     
     // Função para fazer todos os bots jogarem
     function triggerBotPlays() {
-        console.log('triggerBotPlays - checking bots');
-        let delay = 800;
+        if (!isHost) return; // Apenas o host controla os bots
+        
+        console.log('triggerBotPlays - checking bots, gameState:', gameState);
+        
+        // Verificar se estamos no estado correto
+        if (gameState !== 'SELECT') {
+            console.log('triggerBotPlays - wrong gameState, skipping');
+            return;
+        }
+        
+        let delay = 500;
+        let botsToPlay = [];
+        
         players.forEach((p, idx) => {
-            if (p.isBot && !p.lastPlayed && p.hand.length > 0) {
-                console.log('triggerBotPlays - scheduling bot', p.name, 'to play in', delay, 'ms');
-                setTimeout(() => {
-                    if (gameState === 'SELECT' && !p.lastPlayed) {
-                        makeBotPlay(idx);
-                    }
-                }, delay);
-                delay += 800;
+            if (p.isBot && !p.lastPlayed && p.hand && p.hand.length > 0) {
+                botsToPlay.push({ player: p, index: idx });
             }
+        });
+        
+        console.log('triggerBotPlays - bots to play:', botsToPlay.map(b => b.player.name));
+        
+        botsToPlay.forEach((bot, i) => {
+            const playDelay = delay + (i * 600);
+            console.log('triggerBotPlays - scheduling', bot.player.name, 'to play in', playDelay, 'ms');
+            setTimeout(() => {
+                // Verificar novamente antes de jogar
+                if (gameState === 'SELECT' && !bot.player.lastPlayed && bot.player.hand && bot.player.hand.length > 0) {
+                    console.log('triggerBotPlays - executing play for', bot.player.name);
+                    makeBotPlay(bot.index);
+                } else {
+                    console.log('triggerBotPlays - skipping', bot.player.name, '- conditions not met');
+                }
+            }, playDelay);
         });
     }
     
