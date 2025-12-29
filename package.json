@@ -1,0 +1,13 @@
+{
+  "name": "6-qui-prend-multiplayer",
+  "version": "1.0.0",
+  "description": "6 Qui Prend - Jogo Multiplayer Online",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
+}
+

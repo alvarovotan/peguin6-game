@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Peguin 6 - Multiplayer Online</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --sidebar-color: #181818;
+            
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            
+            --accent-color: #bb86fc;
+            --danger-color: #cf6679;
+            --warning-color: #e67e22;
+            
+            /* Cores dos TdB */
+            --tdb-low: #7f8c8d;
+            --tdb-med: #f1c40f;
+            --tdb-high: #e74c3c;
+
+            /* Tamanhos Padrão (Desktop) */
+            --card-w: 48px;
+            --card-h: 74px;
+            --row-gap: 8px;
+            --row-h: 94px;
+            --row-padding: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Lobby Screen --- */
+        #lobby-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            gap: 30px;
+        }
+
+        .lobby-container {
+            background: var(--surface-color);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .lobby-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .lobby-subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background: rgba(0,0,0,0.4);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: 1px solid var(--text-primary);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-color);
+        }
+
+        .btn-primary {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .room-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(187, 134, 252, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .room-info.show {
+            display: block;
+        }
+
+        .room-code {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-align: center;
+            margin: 10px 0;
+            letter-spacing: 3px;
+        }
+
+        .room-link {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .room-link input {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .room-link button {
+            padding: 8px 15px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 6px;
+            color: var(--bg-color);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .players-list {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            min-height: 100px;
+        }
+
+        .player-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-item.host::after {
+            content: "👑";
+            margin-left: 8px;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(207, 102, 121, 0.2);
+            border: 1px solid var(--danger-color);
+            border-radius: 6px;
+            color: var(--danger-color);
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* --- Game Screen (hidden by default) --- */
+        #game-screen {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #game-screen.show {
+            display: flex;
+        }
+
+        /* --- Responsividade --- */
+        @media (max-width: 768px) {
+            :root {
+                --card-w: 38px;
+                --card-h: 58px;
+                --row-gap: 4px;
+                --row-h: 74px;
+                --row-padding: 6px;
+            }
+            .lobby-container {
+                padding: 25px;
+            }
+            .lobby-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* --- Game Styles (from original) --- */
+        .main-layout {
+            display: flex;
+            width: 95%;
+            max-width: 1000px;
+            height: calc(100vh - 60px);
+            gap: 15px;
+            margin-top: 10px;
+            align-items: flex-start;
+        }
+
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: 100%;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 180px;
+            background-color: var(--sidebar-color);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: calc(100% - 32px);
+            box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            overflow-y: auto;
+        }
+
+        header { text-align: center; width: 100%; padding-top: 10px; flex-shrink: 0;}
+        h1 { margin: 0; font-weight: 300; letter-spacing: 2px; font-size: 1.4rem; color: var(--text-secondary); text-transform: uppercase; }
+        .subtitle { font-size: 0.75rem; color: var(--accent-color); opacity: 0.8; letter-spacing: 1px; }
+
+        #status-bar {
+            background-color: var(--surface-color);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 400;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            min-height: 36px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .status-action { border-color: var(--accent-color) !important; color: var(--accent-color) !important; }
+        .status-error { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
+
+        .scoreboard-title { font-size: 1rem; font-weight: 600; text-align: center; margin-bottom: 5px; color: var(--text-primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        
+        .score-entry {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;
+            font-size: 0.85rem; transition: transform 0.2s;
+        }
+        .score-entry.leader { border-left: 2px solid var(--accent-color); background: linear-gradient(90deg, rgba(187,134,252,0.1) 0%, transparent 100%); }
+        .score-entry.danger { border-left: 2px solid var(--danger-color); }
+        .score-entry.human { border: 1px solid rgba(255,255,255,0.2); }
+        .score-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; }
+        .score-val { font-weight: bold; }
+
+        .bots-action-area {
+            display: flex; justify-content: center; gap: 10px; min-height: 30px; flex-shrink: 0;
+        }
+        .bot-action-card {
+            background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 15px;
+            color: var(--text-secondary); font-size: 0.8rem; display: flex; align-items: center; gap: 6px;
+            opacity: 0; transform: translateY(10px); transition: all 0.3s;
+        }
+        .bot-action-card.visible { opacity: 1; transform: translateY(0); }
+        .bot-action-card strong { color: var(--text-primary); font-size: 0.9rem; }
+
+        .board {
+            background-color: var(--surface-color);
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+            align-self: center;
+            width: fit-content;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            height: var(--row-h);
+            width: calc((6 * var(--card-w)) + (5 * var(--row-gap)) + (2 * var(--row-padding))); 
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 0 var(--row-padding);
+            border: 1px solid rgba(255,255,255,0.02);
+            transition: background-color 0.3s, border-color 0.3s; 
+            gap: var(--row-gap);
+        }
+
+        .row.selectable { cursor: pointer; background-color: rgba(187, 134, 252, 0.15); border-color: var(--accent-color); border-width: 2px; box-shadow: 0 0 12px rgba(187, 134, 252, 0.3); }
+        .row.selectable:hover { background-color: rgba(187, 134, 252, 0.25); box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); transform: scale(1.02); }
+        .row.full-danger { border: 1px solid rgba(207, 102, 121, 0.3); background: linear-gradient(90deg, rgba(207,102,121,0.05) 0%, transparent 100%); }
+
+        .slot {
+            width: var(--card-w);
+            height: var(--card-h);
+            border-radius: 5px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slot.empty {
+            border: 1px dashed rgba(255,255,255,0.1);
+            background-color: rgba(255,255,255,0.02);
+        }
+
+        .slot.sixth {
+            border: 1px dashed rgba(207, 102, 121, 0.3); 
+            background-color: rgba(207, 102, 121, 0.05);
+            color: rgba(207, 102, 121, 0.3);
+            font-size: 0.8rem;
+        }
+        
+        .slot.sixth::after {
+            content: "VI";
+            font-weight: bold;
+            opacity: 0.5;
+        }
+
+        .row.full-danger .slot.sixth {
+            border-color: var(--danger-color);
+            background-color: rgba(207, 102, 121, 0.2);
+            color: var(--danger-color);
+            box-shadow: 0 0 8px rgba(207, 102, 121, 0.2);
+            animation: pulse-danger 1.5s infinite;
+        }
+        
+        @keyframes pulse-danger {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.6; }
+        }
+
+        .card {
+            width: var(--card-w);
+            height: var(--card-h);
+            border-radius: 5px;
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+            background-color: #2c2c2c; color: #ecf0f1;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+            position: relative; 
+            padding: 4px 2px;
+            border: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+            z-index: 2;
+            transition: transform 0.2s;
+        }
+        
+        .card-number { font-size: 1.1rem; font-weight: 300; letter-spacing: -1px; }
+        
+        .card-dots {
+            font-size: 5px; line-height: 5px; text-align: center;
+            color: var(--tdb-low); display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; max-width: 100%;
+        }
+
+        .card.risk-low .card-dots { color: var(--tdb-low); }
+        .card.risk-med .card-dots { color: var(--tdb-med); }
+        .card.risk-high .card-dots { color: var(--tdb-high); }
+        .card.risk-med { border-bottom: 2px solid var(--tdb-med); }
+        .card.risk-high { border-bottom: 2px solid var(--tdb-high); }
+
+        .player-area {
+            background-color: var(--surface-color);
+            padding: 10px;
+            border-radius: 12px;
+            margin-top: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+            width: 100%;
+            max-width: 600px;
+            align-self: center;
+            min-height: 100px; 
+            display: flex; flex-direction: column; justify-content: center;
+        }
+
+        .hand {
+            display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; 
+        }
+
+        .hand .card { cursor: pointer; background-color: #333; }
+        .hand .card:hover { transform: translateY(-5px); background-color: #3a3a3a; border-color: rgba(255,255,255,0.2); z-index: 10;}
+        .hand .card.disabled { opacity: 0.3; cursor: not-allowed; transform: none; filter: grayscale(100%); }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: var(--surface-color); color: var(--text-primary);
+            padding: 30px; border-radius: 12px; text-align: center; max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        button {
+            background-color: transparent; color: var(--text-primary); border: 1px solid var(--text-primary);
+            padding: 10px 25px; font-size: 0.85rem; border-radius: 50px; cursor: pointer; margin-top: 20px;
+            transition: all 0.3s; text-transform: uppercase;
+        }
+        button:hover { background-color: var(--text-primary); color: var(--bg-color); }
+
+    </style>
+</head>
+<body>
+
+    <!-- Lobby Screen -->
+    <div id="lobby-screen">
+        <div class="lobby-container">
+            <h1 class="lobby-title">PEGUIN 6</h1>
+            <div class="lobby-subtitle">Jogue online com seus amigos</div>
+
+            <div id="lobby-form">
+                <div class="input-group">
+                    <label for="player-name">Seu Nome</label>
+                    <input type="text" id="player-name" placeholder="Digite seu nome" maxlength="20" value="">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="createRoom()">Criar Sala</button>
+                    <button class="btn" onclick="showJoinForm()">Entrar em Sala</button>
+                    <button class="btn" onclick="playSoloWithBots()">Jogar com Bots</button>
+                </div>
+
+                <div id="join-form" style="display: none; margin-top: 20px;">
+                    <div class="input-group">
+                        <label for="room-code">Código da Sala</label>
+                        <input type="text" id="room-code" placeholder="Digite o código" maxlength="6" style="text-transform: uppercase;">
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="joinRoom()">Entrar</button>
+                    <button class="btn" style="width: 100%; margin-top: 10px;" onclick="hideJoinForm()">Cancelar</button>
+                </div>
+            </div>
+
+            <div class="room-info" id="room-info">
+                <div style="text-align: center; margin-bottom: 10px; font-size: 0.9rem; color: var(--text-secondary);">
+                    Compartilhe o código da sala:
+                </div>
+                <div class="room-code" id="room-code-display" style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;" onclick="copyRoomCode()" title="Clique para copiar">
+                    <span id="room-code-text"></span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">📋</span>
+                </div>
+                <div class="room-link">
+                    <input type="text" id="room-link-input" readonly>
+                    <button onclick="copyLink()">Copiar</button>
+                </div>
+                <div class="players-list" id="players-list">
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;">Jogadores na sala:</div>
+                    <div id="players-list-content"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" style="flex: 1; margin-top: 10px;" id="add-bot-btn" onclick="addBotToRoom()">Adicionar Bot</button>
+                    <button class="btn" style="flex: 1; margin-top: 10px;" id="remove-bot-btn" onclick="removeBotFromRoom()">Remover Bot</button>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" id="start-game-btn" onclick="startGame()" disabled>Iniciar Jogo</button>
+            </div>
+
+            <div class="error-message" id="error-message"></div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h1>Peguin 6</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" style="padding: 8px 12px; font-size: 0.8rem;" onclick="showGameMenu()">Menu</button>
+                </div>
+            </div>
+            <div class="subtitle">LIMITE: 66 PTS</div>
+        </header>
+        
+        <!-- Game Menu -->
+        <div id="game-menu" style="display: none; position: fixed; top: 60px; right: 10px; background: var(--surface-color); border: 1px solid var(--accent-color); border-radius: 8px; padding: 10px; z-index: 1000; min-width: 150px;">
+            <button class="btn" style="width: 100%; margin-bottom: 5px; padding: 8px; font-size: 0.8rem;" onclick="surrenderGame()">Desistir</button>
+            <button class="btn" style="width: 100%; padding: 8px; font-size: 0.8rem;" onclick="exitGame()">Sair para Menu</button>
+        </div>
+
+        <div class="main-layout">
+            <div class="game-area">
+                <div id="status-bar">Aguardando jogadores...</div>
+                <div class="bots-action-area" id="bots-action-area"></div>
+                <div class="board" id="board">
+                    <div class="row" id="row-0" onclick="handleRowClick(0)"></div>
+                    <div class="row" id="row-1" onclick="handleRowClick(1)"></div>
+                    <div class="row" id="row-2" onclick="handleRowClick(2)"></div>
+                    <div class="row" id="row-3" onclick="handleRowClick(3)"></div>
+                </div>
+                <div class="player-area">
+                    <div style="margin-bottom:5px; color:var(--text-secondary); font-size:0.8rem; text-align:center;">SUA MÃO</div>
+                    <div class="hand" id="player-hand"></div>
+                </div>
+            </div>
+
+            <aside class="sidebar">
+                <div class="scoreboard-title">PLACAR</div>
+                <div id="scoreboard-list"></div>
+                <div style="margin-top:auto; font-size:0.75rem; color:var(--text-secondary); text-align:center; min-width: 60px;">
+                    R <span id="round-num">1</span>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- End Game Overlay -->
+    <div id="overlay">
+        <div class="modal-content">
+            <h2 id="end-title">Fim de Jogo</h2>
+            <div id="end-message" style="margin-top: 20px; line-height: 1.6;"></div>
+            <button onclick="location.reload()">Jogar Novamente</button>
+        </div>
+    </div>
+
+<script>
+    // --- Configurações ---
+    const TOTAL_CARDS = 104;
+    const ROW_COUNT = 4;
+    const MAX_ROW_LENGTH = 5;
+    const SCORE_LIMIT = 66;
+    // Detecta automaticamente a URL do WebSocket
+    function getWebSocketURL() {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+        
+        // Se for localhost, usa localhost:3000
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'ws://localhost:3000/ws';
+        }
+        
+        // Caso contrário, usa a mesma URL do navegador
+        return `${protocol}//${hostname}${port && port !== '80' && port !== '443' ? ':' + port : ''}/ws`;
+    }
+    
+    const WS_URL = getWebSocketURL();
+
+    // --- Estado Global ---
+    let ws = null;
+    let playerId = null;
+    let playerName = '';
+    let roomId = null;
+    let isHost = false;
+    let players = [];
+    let deck = [];
+    let boardRows = [[], [], [], []];
+    let currentTurn = 1;
+    let gameState = "LOBBY";
+    let roundSelections = [];
+    let pendingPlayerCard = null;
+    let myPlayerIndex = -1;
+
+    // --- WebSocket Connection ---
+    function connectWebSocket() {
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+            console.log('Conectado ao servidor');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+        };
+
+        ws.onerror = (error) => {
+            showError('Erro de conexão. Certifique-se de que o servidor está rodando.');
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('Desconectado do servidor');
+            setTimeout(() => {
+                if (gameState !== 'END') {
+                    showError('Conexão perdida. Tentando reconectar...');
+                    connectWebSocket();
+                }
+            }, 3000);
+        };
+    }
+
+    function handleWebSocketMessage(data) {
+        switch (data.type) {
+            case 'ROOM_CREATED':
+                roomId = data.payload.roomId;
+                playerId = data.payload.playerId;
+                isHost = true;
+                // Adicionar o host à lista de players
+                players = [{
+                    id: playerId,
+                    name: data.payload.playerName,
+                    isBot: false,
+                    hand: [],
+                    score: 0,
+                    lastPlayed: null
+                }];
+                updatePlayersList([{ id: playerId, name: data.payload.playerName }]);
+                showRoomInfo();
+                break;
+
+            case 'JOIN_CONFIRMED':
+                // Convidado recebe seu playerId do servidor
+                playerId = data.payload.playerId;
+                roomId = data.payload.roomId;
+                console.log('JOIN_CONFIRMED - playerId:', playerId, 'roomId:', roomId);
+                showRoomInfo();
+                break;
+
+            case 'PLAYER_JOINED':
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
+
+            case 'PLAYER_LEFT':
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
+
+            case 'GAME_STARTED':
+                // Preservar as mãos se já existirem (para o host)
+                const existingHands = players.map(p => p.hand || []);
+                players = data.payload.players.map((p, idx) => ({
+                    id: p.id,
+                    name: p.name,
+                    isBot: false,
+                    hand: existingHands[idx] || [],
+                    score: 0,
+                    lastPlayed: null
+                }));
+                myPlayerIndex = players.findIndex(p => p.id === playerId);
+                console.log('GAME_STARTED - myPlayerIndex:', myPlayerIndex, 'playerId:', playerId);
+                startNewRound();
+                break;
+
+            case 'GAME_UPDATE':
+                handleGameUpdate(data.payload);
+                break;
+
+            case 'GAME_STATE_UPDATE':
+                syncGameState(data.payload.gameState);
+                break;
+
+            case 'ERROR':
+                showError(data.payload.message);
+                break;
+        }
+    }
+
+    // --- Lobby Functions ---
+    function createRoom() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) {
+            showError('Por favor, digite seu nome');
+            return;
+        }
+        playerName = name;
+        connectWebSocket();
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                type: 'CREATE_ROOM',
+                payload: { playerName: name }
+            }));
+        };
+    }
+
+    function showJoinForm() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) {
+            showError('Por favor, digite seu nome primeiro');
+            return;
+        }
+        playerName = name;
+        document.getElementById('join-form').style.display = 'block';
+    }
+
+    function hideJoinForm() {
+        document.getElementById('join-form').style.display = 'none';
+        document.getElementById('room-code').value = '';
+    }
+    
+    function playSoloWithBots() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) {
+            showError('Por favor, digite seu nome primeiro');
+            return;
+        }
+        playerName = name;
+        isHost = true;
+        playerId = 'player-' + Math.random().toString(36).substr(2, 9);
+        roomId = 'SOLO-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+        
+        // Criar jogadores com bots
+        players = [
+            {
+                id: playerId,
+                name: playerName,
+                isBot: false,
+                hand: [],
+                score: 0,
+                lastPlayed: null
+            },
+            {
+                id: 'bot-1',
+                name: 'Bot 1',
+                isBot: true,
+                hand: [],
+                score: 0,
+                lastPlayed: null
+            },
+            {
+                id: 'bot-2',
+                name: 'Bot 2',
+                isBot: true,
+                hand: [],
+                score: 0,
+                lastPlayed: null
+            }
+        ];
+        
+        myPlayerIndex = 0;
+        
+        // Iniciar o jogo
+        document.getElementById('lobby-screen').style.display = 'none';
+        startNewRound();
+    }
+
+    function joinRoom() {
+        const code = document.getElementById('room-code').value.trim().toUpperCase();
+        if (!code) {
+            showError('Por favor, digite o código da sala');
+            return;
+        }
+        connectWebSocket();
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                type: 'JOIN_ROOM',
+                payload: { roomId: code, playerName: playerName }
+            }));
+        };
+    }
+
+    function showRoomInfo() {
+        document.getElementById('lobby-form').style.display = 'none';
+        document.getElementById('room-info').classList.add('show');
+        document.getElementById('room-code-text').textContent = roomId;
+        const fullLink = window.location.href.split('?')[0] + '?room=' + roomId;
+        document.getElementById('room-link-input').value = fullLink;
+    }
+
+    function updatePlayersList(playersList) {
+        // Atualizar a variável players global para que startGame funcione
+        players = playersList.map(p => ({
+            id: p.id,
+            name: p.name,
+            isBot: false,
+            hand: [],
+            score: 0,
+            lastPlayed: null
+        }));
+        
+        const container = document.getElementById('players-list-content');
+        container.innerHTML = '';
+        playersList.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'player-item';
+            if (p.id === playerId && isHost) div.classList.add('host');
+            div.textContent = p.name;
+            container.appendChild(div);
+        });
+    }
+
+    function copyLink() {
+        const input = document.getElementById('room-link-input');
+        input.select();
+        document.execCommand('copy');
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }
+    
+    function copyRoomCode() {
+        const code = roomId;
+        if (!code) return;
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(code).then(() => {
+                const display = document.getElementById('room-code-display');
+                const originalHTML = display.innerHTML;
+                display.innerHTML = '<span style="color: var(--accent-color);">Copiado!</span>';
+                setTimeout(() => {
+                    display.innerHTML = originalHTML;
+                }, 2000);
+            });
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+    }
+
+    function startGame() {
+        if (!isHost) return;
+        if (players.length < 2) {
+            showError('Precisa de pelo menos 2 jogadores');
+            return;
+        }
+        ws.send(JSON.stringify({
+            type: 'START_GAME',
+            payload: {}
+        }));
+    }
+    
+    function addBotToRoom() {
+        if (!isHost) return;
+        if (players.length >= 4) {
+            showError('Maximo de 4 jogadores');
+            return;
+        }
+        
+        const botId = 'bot-' + Math.random().toString(36).substr(2, 9);
+        const botName = 'Bot ' + (players.length);
+        
+        const newBot = {
+            id: botId,
+            name: botName,
+            isBot: true,
+            hand: [],
+            score: 0,
+            lastPlayed: null
+        };
+        
+        players.push(newBot);
+        updatePlayersList(players);
+        
+        // Habilitar botao de iniciar se tiver 2+ jogadores
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn && players.length >= 2) {
+            startBtn.disabled = false;
+        }
+    }
+
+    function removeBotFromRoom() {
+        if (!isHost) return;
+        let botIndex = -1;
+        for (let i = players.length - 1; i >= 0; i--) {
+            if (players[i].isBot) {
+                botIndex = i;
+                break;
+            }
+        }
+        if (botIndex === -1) {
+            showError('Nenhum bot para remover');
+            return;
+        }
+        players.splice(botIndex, 1);
+        updatePlayersList(players);
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn && players.length < 2) {
+            startBtn.disabled = true;
+        }
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.classList.add('show');
+        setTimeout(() => {
+            errorDiv.classList.remove('show');
+        }, 5000);
+    }
+
+    // --- Game Functions ---
+    function calculateTdB(num) {
+        let tdb = 1;
+        if (num % 10 === 0) tdb = 3;
+        else if (num % 5 === 0) tdb = 2;
+        if (num > 10 && num < 100 && Math.floor(num/10) === (num%10)) tdb += 5;
+        return tdb;
+    }
+
+    function startNewRound() {
+        console.log('startNewRound - isHost:', isHost, 'myPlayerIndex:', myPlayerIndex, 'players:', players.length);
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('game-screen').classList.add('show');
+
+        deck = [];
+        for (let i = 1; i <= TOTAL_CARDS; i++) deck.push({ number: i, tdb: calculateTdB(i) });
+        
+        // Shuffle
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        // Deal cards (only host generates and distributes)
+        if (isHost) {
+            const hands = [];
+            for (let p = 0; p < players.length; p++) {
+                hands[p] = [];
+                for (let k = 0; k < 10; k++) hands[p].push(deck.pop());
+                hands[p].sort((a,b) => a.number - b.number);
+            }
+
+            const initialRows = [];
+            for (let i = 0; i < ROW_COUNT; i++) initialRows[i] = [deck.pop()];
+
+            // Send game state to all players
+            const gameState = {
+                hands: hands,
+                boardRows: initialRows,
+                currentTurn: 1
+            };
+
+            ws.send(JSON.stringify({
+                type: 'GAME_STATE_SYNC',
+                payload: { gameState }
+            }));
+
+            // Apply locally
+            console.log('Host applying hands locally, players:', players.length, 'hands:', hands.length);
+            players.forEach((p, idx) => {
+                p.hand = hands[idx];
+                p.lastPlayed = null;
+                console.log('Player', idx, p.name, 'hand:', p.hand.length, 'cards');
+            });
+            boardRows = initialRows;
+            console.log('Host myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
+        }
+
+        currentTurn = 1;
+        gameState = "SELECT";
+        updateUI();
+        setStatus("Aguardando jogadas...", "action");
+    }
+
+    // IA para bots - escolhe uma carta estrategica
+    function chooseBotCard(botHand, boardRows) {
+        if (!botHand || botHand.length === 0) return null;
+        const sortedHand = [...botHand].sort((a, b) => a.number - b.number);
+        for (let card of sortedHand) {
+            let bestRow = -1;
+            let bestLastCard = -1;
+            for (let i = 0; i < boardRows.length; i++) {
+                const row = boardRows[i];
+                if (row.length === 0) continue;
+                const lastCard = row[row.length - 1].number;
+                if (lastCard < card.number && lastCard > bestLastCard) {
+                    bestRow = i;
+                    bestLastCard = lastCard;
+                }
+            }
+            if (bestRow !== -1 && boardRows[bestRow].length < 5) {
+                return card;
+            }
+        }
+        return sortedHand[0];
+    }
+    
+    function makeBotPlay(botIndex) {
+        const bot = players[botIndex];
+        if (!bot || !bot.isBot || bot.lastPlayed) return;
+        const chosenCard = chooseBotCard(bot.hand, boardRows);
+        if (!chosenCard) return;
+        const cardIndex = bot.hand.findIndex(c => c.number === chosenCard.number);
+        if (cardIndex !== -1) {
+            bot.hand.splice(cardIndex, 1);
+        }
+        bot.lastPlayed = chosenCard;
+        updateUI();
+        if (isHost) {
+            setTimeout(() => checkAllPlayersPlayed(), 500);
+        }
+    }
+
+    function syncGameState(state) {
+        if (!state) return;
+        
+        console.log('syncGameState - playerId:', playerId, 'players:', players.map(p => p.id));
+        
+        // Garantir que myPlayerIndex esteja definido
+        if (myPlayerIndex === -1) {
+            myPlayerIndex = players.findIndex(p => p.id === playerId);
+            console.log('syncGameState - calculated myPlayerIndex:', myPlayerIndex);
+        }
+        
+        // Aplicar as mãos para cada jogador
+        if (state.hands) {
+            console.log('syncGameState - received hands for', state.hands.length, 'players');
+            players.forEach((p, idx) => {
+                if (state.hands[idx]) {
+                    p.hand = state.hands[idx];
+                    console.log('Player', idx, p.name, 'received', p.hand.length, 'cards');
+                }
+            });
+        }
+        
+        if (state.boardRows) {
+            boardRows = state.boardRows;
+        }
+        
+        if (state.currentTurn) {
+            currentTurn = state.currentTurn;
+        }
+
+        console.log('syncGameState - myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
+        
+        gameState = "SELECT";
+        updateUI();
+        setStatus("Sua vez - escolha uma carta", "action");
+        
+        // Fazer bots jogarem automaticamente
+        if (isHost) {
+            players.forEach((p, idx) => {
+                if (p.isBot && !p.lastPlayed) {
+                    setTimeout(() => makeBotPlay(idx), 500 + (idx * 800));
+                }
+            });
+        }
+    }
+
+    function handleCardClick(cardIndex) {
+        if (gameState !== "SELECT") return;
+        if (myPlayerIndex === -1) return;
+
+        const player = players[myPlayerIndex];
+        if (!player || cardIndex >= player.hand.length) return;
+
+        const chosenCard = player.hand[cardIndex];
+        
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'PLAY_CARD',
+                cardIndex: cardIndex,
+                card: chosenCard
+            }
+        }));
+
+        // Optimistic update
+        player.hand.splice(cardIndex, 1);
+        player.lastPlayed = chosenCard;
+        gameState = "WAITING";
+        updateUI();
+        setStatus("Aguardando outros jogadores...");
+        
+        // Se sou o host, verificar se todos jogaram
+        if (isHost) {
+            checkAllPlayersPlayed();
+        }
+    }
+
+    function handleGameUpdate(payload) {
+        if (payload.action === 'PLAY_CARD') {
+            const player = players.find(p => p.id === payload.fromPlayerId);
+            if (player && payload.card) {
+                const cardIndex = player.hand.findIndex(c => c.number === payload.card.number);
+                if (cardIndex !== -1) {
+                    player.hand.splice(cardIndex, 1);
+                }
+                player.lastPlayed = payload.card;
+                updateUI();
+                
+                // Verificar se todos jogaram (apenas o host processa)
+                if (isHost) {
+                    checkAllPlayersPlayed();
+                }
+            }
+        } else if (payload.action === 'CARD_PLACED') {
+            // Handle card placement
+            if (payload.rowIndex !== undefined && payload.card) {
+                if (payload.isSixthCard) {
+                    // Row was taken
+                    boardRows[payload.rowIndex] = [payload.card];
+                    if (payload.points !== undefined) {
+                        const player = players.find(p => p.id === payload.playerId);
+                        if (player) player.score += payload.points;
+                    }
+                } else {
+                    boardRows[payload.rowIndex].push(payload.card);
+                }
+                updateUI();
+            }
+        } else if (payload.action === 'ROW_SELECTED') {
+            // Handle row selection for low card
+            if (payload.rowIndex !== undefined && payload.card) {
+                boardRows[payload.rowIndex] = [payload.card];
+                if (payload.points !== undefined) {
+                    const player = players.find(p => p.id === payload.playerId);
+                    if (player) player.score += payload.points;
+                }
+                updateUI();
+            }
+        } else if (payload.action === 'TURN_END') {
+            players.forEach(p => p.lastPlayed = null);
+            currentTurn++;
+            gameState = "SELECT";
+            updateUI();
+            setStatus("Sua vez", "action");
+        }
+    }
+
+    // Verificar se todos os jogadores jogaram suas cartas
+    function checkAllPlayersPlayed() {
+        const allPlayed = players.every(p => p.lastPlayed !== null);
+        console.log('checkAllPlayersPlayed:', allPlayed, players.map(p => p.lastPlayed?.number));
+        
+        if (allPlayed) {
+            // Pequeno delay para garantir que a UI atualize
+            setTimeout(() => processRound(), 500);
+        }
+    }
+    
+    // Processar o turno - colocar cartas nas fileiras
+    function processRound() {
+        console.log('processRound - processing cards');
+        
+        // Ordenar jogadores pela carta jogada (menor para maior)
+        const playedCards = players.map((p, idx) => ({
+            playerIndex: idx,
+            playerId: p.id,
+            card: p.lastPlayed
+        })).sort((a, b) => a.card.number - b.card.number);
+        
+        // Processar cada carta em ordem
+        let delay = 0;
+        playedCards.forEach((play, i) => {
+            setTimeout(() => {
+                placeCardOnBoard(play.playerIndex, play.card);
+                
+                // Se for a última carta, finalizar o turno
+                if (i === playedCards.length - 1) {
+                    setTimeout(() => finishTurn(), 800);
+                }
+            }, delay);
+            delay += 800;
+        });
+    }
+    
+    // Colocar uma carta no tabuleiro
+    function placeCardOnBoard(playerIndex, card) {
+        console.log('placeCardOnBoard - player:', playerIndex, 'card:', card.number);
+        
+        // Encontrar a fileira correta (maior carta menor que a jogada)
+        let bestRow = -1;
+        let bestLastCard = -1;
+        
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const row = boardRows[i];
+            const lastCard = row[row.length - 1].number;
+            
+            if (lastCard < card.number && lastCard > bestLastCard) {
+                bestRow = i;
+                bestLastCard = lastCard;
+            }
+        }
+        
+        if (bestRow === -1) {
+            // Carta é menor que todas as últimas - jogador deve escolher uma fileira
+            // Se for o jogador humano, pausar e pedir escolha
+            if (playerIndex === myPlayerIndex && playerId === players[playerIndex].id) {
+                // Armazenar a carta pendente para o jogador escolher a fileira
+                pendingPlayerCard = card;
+                gameState = "CHOOSE_ROW";
+                setStatus("Sua carta é menor que todas! Escolha uma fileira para comprar", "action");
+                updateUI();
+                return;
+            } else {
+                // Para outros jogadores (ou host automático), escolher a fileira com menos pontos
+                let minPoints = Infinity;
+                let minRow = 0;
+                
+                for (let i = 0; i < ROW_COUNT; i++) {
+                    const points = boardRows[i].reduce((acc, c) => acc + c.tdb, 0);
+                    if (points < minPoints) {
+                        minPoints = points;
+                        minRow = i;
+                    }
+                }
+                
+                // Jogador pega os pontos da fileira
+                players[playerIndex].score += minPoints;
+                boardRows[minRow] = [card];
+                
+                // Broadcast para outros jogadores
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'CARD_PLACED',
+                        rowIndex: minRow,
+                        card: card,
+                        playerId: players[playerIndex].id,
+                        isSixthCard: true,
+                        points: minPoints
+                    }
+                }));
+            }
+        } else {
+            // Verificar se a fileira vai ficar com 6 cartas
+            if (boardRows[bestRow].length >= 5) {
+                // Jogador pega os pontos da fileira
+                const points = boardRows[bestRow].reduce((acc, c) => acc + c.tdb, 0);
+                players[playerIndex].score += points;
+                boardRows[bestRow] = [card];
+                
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'CARD_PLACED',
+                        rowIndex: bestRow,
+                        card: card,
+                        playerId: players[playerIndex].id,
+                        isSixthCard: true,
+                        points: points
+                    }
+                }));
+            } else {
+                // Adicionar carta à fileira normalmente
+                boardRows[bestRow].push(card);
+                
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'CARD_PLACED',
+                        rowIndex: bestRow,
+                        card: card,
+                        playerId: players[playerIndex].id,
+                        isSixthCard: false
+                    }
+                }));
+            }
+        }
+        
+        updateUI();
+    }
+    
+    // Finalizar o turno
+    function finishTurn() {
+        console.log('finishTurn - turn:', currentTurn);
+        
+        // Limpar cartas jogadas
+        players.forEach(p => p.lastPlayed = null);
+        currentTurn++;
+        
+        // Verificar fim de jogo (alguem atingiu 66 pontos)
+        const gameOver = players.some(p => p.score >= 66);
+        
+        if (gameOver) {
+            gameState = "END";
+            const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+            setStatus(`Fim de jogo! ${winner.name} venceu com ${winner.score} pontos!`, "action");
+        } else {
+            // Distribuir novas cartas se necessario
+            if (isHost) {
+                distributeNewCards();
+            }
+            
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+        }
+        
+        // Broadcast para outros jogadores
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'TURN_END'
+            }
+        }));
+        
+        updateUI();
+    }
+    
+    // Distribuir novas cartas para jogadores que ficaram sem
+    function distributeNewCards() {
+        console.log('distributeNewCards - deck remaining:', deck.length);
+        
+        // Verificar se todos os jogadores esgotaram suas cartas
+        const allEmpty = players.every(p => p.hand.length === 0);
+        
+        if (!allEmpty || deck.length < players.length * 10 + 4) {
+            console.log('Not all players empty or not enough cards in deck');
+            return;
+        }
+        
+        console.log('Starting new round - all players had 0 cards');
+        
+        // Distribuir 10 cartas para cada jogador
+        players.forEach(p => {
+            p.hand = [];
+            for (let i = 0; i < 10; i++) {
+                if (deck.length > 0) {
+                    p.hand.push(deck.pop());
+                }
+            }
+            // Ordenar a mao
+            p.hand.sort((a, b) => a.number - b.number);
+        });
+        
+        // Resetar a mesa com 4 novas cartas (1 por fileira)
+        boardRows = [];
+        for (let i = 0; i < 4; i++) {
+            if (deck.length > 0) {
+                boardRows[i] = [deck.pop()];
+            } else {
+                boardRows[i] = [];
+            }
+        }
+        
+        console.log('New round started - cards distributed, deck remaining:', deck.length);
+        
+        // Enviar novo estado do jogo
+        const newGameState = {
+            hands: players.map(p => p.hand),
+            boardRows: boardRows,
+            currentTurn: currentTurn
+        };
+        
+        ws.send(JSON.stringify({
+            type: 'GAME_STATE_SYNC',
+            payload: { gameState: newGameState }
+        }));
+    }
+
+    function handleRowClick(rowIdx) {
+        if (gameState !== "CHOOSE_ROW") return;
+        if (!pendingPlayerCard) return;
+
+        console.log('handleRowClick - rowIdx:', rowIdx, 'pendingCard:', pendingPlayerCard);
+        
+        const row = boardRows[rowIdx];
+        const points = row.reduce((acc, c) => acc + c.tdb, 0);
+        
+        // Adicionar a carta a fileira e jogador pega os pontos
+        players[myPlayerIndex].score += points;
+        boardRows[rowIdx] = [pendingPlayerCard];
+        
+        // Enviar para o servidor
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'ROW_SELECTED',
+                rowIndex: rowIdx,
+                card: pendingPlayerCard,
+                points: points
+            }
+        }));
+        
+        pendingPlayerCard = null;
+        gameState = "WAITING";
+        setStatus("Aguardando outros jogadores...");
+        updateUI();
+    }
+
+    // --- UI Helpers ---
+    function showGameMenu() {
+        const menu = document.getElementById('game-menu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    function surrenderGame() {
+        if (confirm('Deseja desistir do jogo?')) {
+            // Enviar mensagem de desistência
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'SURRENDER'
+                }
+            }));
+            // Voltar para o lobby
+            setTimeout(() => exitGame(), 1000);
+        }
+    }
+    
+    function exitGame() {
+        // Fechar conexão WebSocket
+        if (ws) ws.close();
+        
+        // Voltar para o lobby
+        document.getElementById('game-screen').classList.remove('show');
+        document.getElementById('lobby-screen').style.display = 'flex';
+        document.getElementById('game-menu').style.display = 'none';
+        
+        // Resetar variáveis
+        gameState = "SELECT";
+        players = [];
+        myPlayerIndex = -1;
+        isHost = false;
+        playerId = null;
+        roomId = null;
+    }
+
+    function setStatus(msg, type = "normal") {
+        const el = document.getElementById("status-bar");
+        if (!el) return;
+        el.textContent = msg;
+        el.className = ""; 
+        if (type === "action") el.classList.add("status-action");
+        if (type === "error") el.classList.add("status-error");
+        
+        const roundEl = document.getElementById("round-num");
+        if (roundEl) roundEl.textContent = currentTurn;
+    }
+
+    function createCardElement(card, isClickable = false, index = -1) {
+        const el = document.createElement("div");
+        el.className = "card";
+        if (card.tdb < 2) el.classList.add("risk-low");
+        else if (card.tdb < 5) el.classList.add("risk-med");
+        else el.classList.add("risk-high");
+
+        el.innerHTML = `<div class="card-number">${card.number}</div><div class="card-dots">${"●".repeat(card.tdb)}</div>`;
+
+        if (isClickable) el.onclick = () => handleCardClick(index);
+        else if (index !== -1) el.classList.add("disabled");
+        
+        return el;
+    }
+
+    function updateBotsActionArea() {
+        const area = document.getElementById("bots-action-area");
+        if (!area) return;
+        area.innerHTML = "";
+        
+        if (gameState === "WAITING" || gameState === "CHOOSE_ROW") {
+            players.forEach(p => {
+                if (p.lastPlayed) {
+                    const div = document.createElement("div");
+                    div.className = "bot-action-card visible";
+                    div.innerHTML = `${p.name}: <strong>${p.lastPlayed.number}</strong>`;
+                    if (p.id === playerId) div.style.border = "1px solid var(--accent-color)";
+                    area.appendChild(div);
+                }
+            });
+        }
+    }
+
+    function updateUI() {
+        if (!document.getElementById('game-screen').classList.contains('show')) return;
+
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const rowDiv = document.getElementById(`row-${i}`);
+            if (!rowDiv) continue;
+            rowDiv.innerHTML = "";
+            const rowCards = boardRows[i] || [];
+            const isDanger = rowCards.length === MAX_ROW_LENGTH;
+            
+            if (gameState === "CHOOSE_ROW") rowDiv.className = "row selectable";
+            else rowDiv.className = "row";
+            
+            if (isDanger) rowDiv.classList.add("full-danger");
+
+            for (let j = 0; j < 6; j++) {
+                if (j < rowCards.length) {
+                    rowDiv.appendChild(createCardElement(rowCards[j]));
+                } else if (j < 5) {
+                    const emptySlot = document.createElement("div");
+                    emptySlot.className = "slot empty";
+                    rowDiv.appendChild(emptySlot);
+                } else {
+                    const sixthSlot = document.createElement("div");
+                    sixthSlot.className = "slot sixth";
+                    rowDiv.appendChild(sixthSlot);
+                }
+            }
+        }
+
+        const handDiv = document.getElementById("player-hand");
+        if (handDiv && myPlayerIndex !== -1) {
+            handDiv.innerHTML = "";
+            const myHand = players[myPlayerIndex]?.hand || [];
+            myHand.forEach((card, idx) => {
+                const isMyTurn = (gameState === "SELECT");
+                handDiv.appendChild(createCardElement(card, isMyTurn, idx));
+            });
+        }
+
+        const sbList = document.getElementById("scoreboard-list");
+        if (sbList) {
+            sbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                sbList.appendChild(entry);
+            });
+        }
+        
+        updateBotsActionArea();
+    }
+
+    // Check for room code in URL
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCode = urlParams.get('room');
+        if (roomCode) {
+            document.getElementById('room-code').value = roomCode.toUpperCase();
+            showJoinForm();
+        }
+    };
+
+</script>
+</body>
+</html>
