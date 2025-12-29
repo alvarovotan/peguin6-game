@@ -371,8 +371,12 @@
             gap: var(--row-gap);
         }
 
-        .row.selectable { cursor: pointer; background-color: rgba(187, 134, 252, 0.15); border-color: var(--accent-color); border-width: 2px; box-shadow: 0 0 12px rgba(187, 134, 252, 0.3); }
-        .row.selectable:hover { background-color: rgba(187, 134, 252, 0.25); box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); transform: scale(1.02); }
+        .row.selectable { cursor: pointer; background-color: rgba(187, 134, 252, 0.25); border-color: var(--accent-color); border-width: 3px; box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); }
+            50% { box-shadow: 0 0 24px rgba(187, 134, 252, 0.8); }
+        }
+        .row.selectable:hover { border-color: rgba(187, 134, 252, 1); }
         .row.full-danger { border: 1px solid rgba(207, 102, 121, 0.3); background: linear-gradient(90deg, rgba(207,102,121,0.05) 0%, transparent 100%); }
 
         .slot {
@@ -837,14 +841,14 @@
     }
 
     function updatePlayersList(playersList) {
-        // Atualizar a variável players global para que startGame funcione
+        // Atualizar a variável players global preservando isBot
         players = playersList.map(p => ({
             id: p.id,
             name: p.name,
-            isBot: false,
-            hand: [],
-            score: 0,
-            lastPlayed: null
+            isBot: p.isBot || false,
+            hand: p.hand || [],
+            score: p.score || 0,
+            lastPlayed: p.lastPlayed || null
         }));
         
         const container = document.getElementById('players-list-content');
@@ -853,7 +857,7 @@
             const div = document.createElement('div');
             div.className = 'player-item';
             if (p.id === playerId && isHost) div.classList.add('host');
-            div.textContent = p.name;
+            div.textContent = p.name + (p.isBot ? ' 🤖' : '');
             container.appendChild(div);
         });
     }
@@ -1437,10 +1441,22 @@
     }
 
     function handleRowClick(rowIdx) {
-        if (gameState !== "CHOOSE_ROW") return;
-        if (!pendingPlayerCard) return;
+        console.log('handleRowClick called - gameState:', gameState, 'rowIdx:', rowIdx, 'pendingCard:', pendingPlayerCard);
+        
+        if (gameState !== "CHOOSE_ROW") {
+            console.log('handleRowClick - ignoring click, not in CHOOSE_ROW state');
+            return;
+        }
+        if (!pendingPlayerCard) {
+            console.log('handleRowClick - ignoring click, no pending card');
+            return;
+        }
+        if (myPlayerIndex === -1) {
+            console.log('handleRowClick - ignoring click, myPlayerIndex not set');
+            return;
+        }
 
-        console.log('handleRowClick - rowIdx:', rowIdx, 'pendingCard:', pendingPlayerCard);
+        console.log('handleRowClick - processing row selection:', rowIdx);
         
         const row = boardRows[rowIdx];
         const points = row.reduce((acc, c) => acc + c.tdb, 0);
@@ -1614,9 +1630,10 @@
                 if (p.id === playerId) entry.classList.add("human");
                 
                 let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
                 
                 entry.innerHTML = `
-                    <span class="score-name">${p.name}</span>
+                    <span class="score-name">${p.name}${botIcon}</span>
                     <span class="score-val">${p.score} ${skull}</span>
                 `;
                 sbList.appendChild(entry);
