@@ -799,15 +799,13 @@
                 break;
 
             case 'GAME_STARTED':
-                // Preservar as mãos e o status de bot se já existirem (para o host)
-                const existingPlayers = [...players];
+                // Usar as informações de bot enviadas pelo servidor
                 players = data.payload.players.map((p, idx) => {
-                    const existing = existingPlayers.find(ep => ep.id === p.id);
                     return {
                         id: p.id,
                         name: p.name,
-                        isBot: existing ? existing.isBot : false,
-                        hand: existing ? (existing.hand || []) : [],
+                        isBot: p.isBot || false,
+                        hand: [],
                         score: 0,
                         lastPlayed: null
                     };
@@ -1216,10 +1214,12 @@
         // Aplicar as mãos para cada jogador
         if (state.hands) {
             console.log('syncGameState - received hands for', state.hands.length, 'players');
-            players.forEach((p, idx) => {
-                if (state.hands[idx]) {
-                    p.hand = state.hands[idx];
-                    console.log('Player', idx, p.name, 'received', p.hand.length, 'cards');
+            // Se a quantidade de mãos recebidas for diferente da quantidade de jogadores, 
+            // pode ser que a lista de jogadores esteja desatualizada
+            state.hands.forEach((hand, idx) => {
+                if (players[idx]) {
+                    players[idx].hand = hand;
+                    console.log('Player', idx, players[idx].name, 'received', hand.length, 'cards');
                 }
             });
         }
