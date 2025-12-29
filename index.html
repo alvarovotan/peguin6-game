@@ -379,10 +379,38 @@
         }
         
         .row-radio {
-            width: 24px;
-            height: 24px;
+            display: none;
+        }
+        
+        .radio-label {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
             cursor: pointer;
-            accent-color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .radio-label:hover {
+            border-color: var(--accent-color);
+            background: rgba(187, 134, 252, 0.1);
+        }
+        
+        .row-radio:checked + .radio-label {
+            border-color: var(--accent-color);
+            background: var(--accent-color);
+        }
+        
+        .row-radio:checked + .radio-label::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
         }
         
         .row.selectable { 
@@ -604,15 +632,34 @@
             <div class="game-area">
                 <div id="status-bar">Aguardando jogadores...</div>
                 <div class="bots-action-area" id="bots-action-area"></div>
-                <div id="choose-row-title" style="display: none; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent-color); margin-bottom: 15px; text-transform: uppercase;">Selecione a Fileira</div>
+                <div id="choose-row-header" style="display: none; text-align: center; margin-bottom: 15px;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color); text-transform: uppercase;">Selecione a Fileira</div>
+                    <div id="choose-row-timer" style="font-size: 1.5rem; font-weight: bold; color: #ff6b6b; margin-top: 5px;">30</div>
+                </div>
                 <div class="board" id="board">
-                    <div class="row" id="row-0"></div>
-                    <div class="row" id="row-1"></div>
-                    <div class="row" id="row-2"></div>
-                    <div class="row" id="row-3"></div>
+                    <div class="row-wrapper" id="row-wrapper-0">
+                        <input type="radio" name="row-select" class="row-radio" id="radio-row-0" value="0" style="display: none;" onchange="selectRow(0)">
+                        <label for="radio-row-0" class="radio-label" id="radio-label-0" style="display: none;"></label>
+                        <div class="row" id="row-0"></div>
+                    </div>
+                    <div class="row-wrapper" id="row-wrapper-1">
+                        <input type="radio" name="row-select" class="row-radio" id="radio-row-1" value="1" style="display: none;" onchange="selectRow(1)">
+                        <label for="radio-row-1" class="radio-label" id="radio-label-1" style="display: none;"></label>
+                        <div class="row" id="row-1"></div>
+                    </div>
+                    <div class="row-wrapper" id="row-wrapper-2">
+                        <input type="radio" name="row-select" class="row-radio" id="radio-row-2" value="2" style="display: none;" onchange="selectRow(2)">
+                        <label for="radio-row-2" class="radio-label" id="radio-label-2" style="display: none;"></label>
+                        <div class="row" id="row-2"></div>
+                    </div>
+                    <div class="row-wrapper" id="row-wrapper-3">
+                        <input type="radio" name="row-select" class="row-radio" id="radio-row-3" value="3" style="display: none;" onchange="selectRow(3)">
+                        <label for="radio-row-3" class="radio-label" id="radio-label-3" style="display: none;"></label>
+                        <div class="row" id="row-3"></div>
+                    </div>
                 </div>
                 <div id="buy-row-container" style="display: none; text-align: center; margin-top: 20px;">
-                    <button class="btn btn-primary" id="buy-row-btn" onclick="confirmRowPurchase()" style="padding: 12px 40px; font-size: 1rem; font-weight: bold;">COMPRAR FILEIRA</button>
+                    <button class="btn btn-primary" id="buy-row-btn" onclick="confirmRowPurchase()" style="padding: 12px 40px; font-size: 1rem; font-weight: bold;" disabled>COMPRAR FILEIRA</button>
                 </div>
                 <div class="player-area">
                     <div style="margin-bottom:5px; color:var(--text-secondary); font-size:0.8rem; text-align:center;">SUA MÃO</div>
@@ -677,6 +724,8 @@
     let pendingPlayerCard = null;
     let myPlayerIndex = -1;
     let selectedRowIndex = null; // Índice da fileira selecionada para compra
+    let chooseRowTimer = null; // Timer para escolha de fileira
+    let chooseRowTimeLeft = 30; // Segundos restantes para escolher
 
     // --- WebSocket Connection ---
     function connectWebSocket() {
@@ -1274,6 +1323,7 @@
                 selectedRowIndex = null;
                 gameState = "CHOOSE_ROW";
                 setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                startChooseRowTimer(); // Iniciar timer de 30 segundos
                 updateUI();
             }
         } else if (payload.action === 'TURN_END') {
@@ -1421,6 +1471,7 @@
                     selectedRowIndex = null;
                     gameState = "CHOOSE_ROW";
                     setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                    startChooseRowTimer(); // Iniciar timer de 30 segundos
                     updateUI();
                     return;
                 } else {
@@ -1585,6 +1636,77 @@
         }));
     }
 
+    // Função para iniciar o timer de escolha de fileira
+    function startChooseRowTimer() {
+        // Limpar timer anterior se existir
+        if (chooseRowTimer) {
+            clearInterval(chooseRowTimer);
+        }
+        
+        chooseRowTimeLeft = 30;
+        updateTimerDisplay();
+        
+        chooseRowTimer = setInterval(() => {
+            chooseRowTimeLeft--;
+            updateTimerDisplay();
+            
+            if (chooseRowTimeLeft <= 0) {
+                // Tempo esgotado - comprar automaticamente a fileira com menos pontos
+                clearInterval(chooseRowTimer);
+                chooseRowTimer = null;
+                autoSelectBestRow();
+            }
+        }, 1000);
+    }
+    
+    // Função para atualizar o display do timer
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('choose-row-timer');
+        if (timerEl) {
+            timerEl.textContent = chooseRowTimeLeft;
+            // Mudar cor quando ficar pouco tempo
+            if (chooseRowTimeLeft <= 10) {
+                timerEl.style.color = '#ff4444';
+                timerEl.style.animation = 'pulse 0.5s infinite';
+            } else {
+                timerEl.style.color = '#ff6b6b';
+                timerEl.style.animation = 'none';
+            }
+        }
+    }
+    
+    // Função para parar o timer
+    function stopChooseRowTimer() {
+        if (chooseRowTimer) {
+            clearInterval(chooseRowTimer);
+            chooseRowTimer = null;
+        }
+    }
+    
+    // Função para selecionar automaticamente a melhor fileira (menos pontos)
+    function autoSelectBestRow() {
+        console.log('autoSelectBestRow - tempo esgotado, selecionando automaticamente');
+        
+        if (gameState !== "CHOOSE_ROW" || !pendingPlayerCard) {
+            return;
+        }
+        
+        // Encontrar a fileira com menos pontos
+        let minPoints = Infinity;
+        let minRow = 0;
+        
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const points = boardRows[i].reduce((acc, c) => acc + c.tdb, 0);
+            if (points < minPoints) {
+                minPoints = points;
+                minRow = i;
+            }
+        }
+        
+        selectedRowIndex = minRow;
+        confirmRowPurchase();
+    }
+    
     // Função para selecionar uma fileira (marca o radio button)
     function selectRow(rowIdx) {
         console.log('selectRow called - rowIdx:', rowIdx);
@@ -1600,12 +1722,28 @@
         
         selectedRowIndex = rowIdx;
         console.log('selectRow - selected row:', selectedRowIndex);
+        
+        // Marcar o radio button correspondente
+        const radio = document.getElementById('radio-row-' + rowIdx);
+        if (radio) {
+            radio.checked = true;
+        }
+        
+        // Habilitar o botão de comprar
+        const buyBtn = document.getElementById('buy-row-btn');
+        if (buyBtn) {
+            buyBtn.disabled = false;
+        }
+        
         updateUI();
     }
     
     // Função para confirmar a compra da fileira selecionada
     function confirmRowPurchase() {
         console.log('confirmRowPurchase called - selectedRowIndex:', selectedRowIndex);
+        
+        // Parar o timer
+        stopChooseRowTimer();
         
         if (gameState !== "CHOOSE_ROW") {
             console.log('confirmRowPurchase - ignoring, not in CHOOSE_ROW state');
@@ -1649,6 +1787,13 @@
         selectedRowIndex = null;
         gameState = "WAITING";
         setStatus("Aguardando outros jogadores...");
+        
+        // Resetar radio buttons
+        for (let i = 0; i < 4; i++) {
+            const radio = document.getElementById('radio-row-' + i);
+            if (radio) radio.checked = false;
+        }
+        
         updateUI();
     }
     
@@ -1755,18 +1900,37 @@
     function updateUI() {
         if (!document.getElementById('game-screen').classList.contains('show')) return;
         
-        // Mostrar/ocultar título e botão de compra
-        const chooseRowTitle = document.getElementById('choose-row-title');
+        // Mostrar/ocultar header com timer e botão de compra
+        const chooseRowHeader = document.getElementById('choose-row-header');
         const buyRowContainer = document.getElementById('buy-row-container');
         const buyRowBtn = document.getElementById('buy-row-btn');
         
-        if (gameState === "CHOOSE_ROW" && pendingPlayerCard) {
-            if (chooseRowTitle) chooseRowTitle.style.display = 'block';
+        const isChooseRowMode = (gameState === "CHOOSE_ROW" && pendingPlayerCard);
+        
+        if (isChooseRowMode) {
+            if (chooseRowHeader) chooseRowHeader.style.display = 'block';
             if (buyRowContainer) buyRowContainer.style.display = 'block';
             if (buyRowBtn) buyRowBtn.disabled = selectedRowIndex === null;
         } else {
-            if (chooseRowTitle) chooseRowTitle.style.display = 'none';
+            if (chooseRowHeader) chooseRowHeader.style.display = 'none';
             if (buyRowContainer) buyRowContainer.style.display = 'none';
+        }
+        
+        // Mostrar/ocultar radio buttons
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const radio = document.getElementById(`radio-row-${i}`);
+            const radioLabel = document.getElementById(`radio-label-${i}`);
+            
+            if (isChooseRowMode) {
+                if (radio) radio.style.display = 'block';
+                if (radioLabel) radioLabel.style.display = 'flex';
+            } else {
+                if (radio) {
+                    radio.style.display = 'none';
+                    radio.checked = false;
+                }
+                if (radioLabel) radioLabel.style.display = 'none';
+            }
         }
 
         for (let i = 0; i < ROW_COUNT; i++) {
@@ -1776,7 +1940,7 @@
             const rowCards = boardRows[i] || [];
             const isDanger = rowCards.length === MAX_ROW_LENGTH;
             
-            if (gameState === "CHOOSE_ROW") {
+            if (isChooseRowMode) {
                 rowDiv.className = "row selectable";
                 if (selectedRowIndex === i) rowDiv.classList.add("selected");
                 rowDiv.onclick = () => selectRow(i);
