@@ -340,15 +340,14 @@
                 order: 1;
             }
             
+            /* Ocultar sidebar no mobile - usar botão flutuante */
             .sidebar {
-                width: 100%;
-                height: auto;
-                order: 2;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 8px;
-                padding: 10px;
+                display: none !important;
+            }
+            
+            /* Mostrar botão flutuante de placar no mobile */
+            .mobile-placar-btn {
+                display: block;
             }
             
             .scoreboard-title {
@@ -364,6 +363,11 @@
             
             .score-name {
                 max-width: 70px;
+            }
+            
+            /* Ajustar layout do jogo para ocupar toda a tela */
+            .main-layout {
+                padding-bottom: 80px; /* Espaço para o botão flutuante */
             }
             
             .board {
@@ -564,7 +568,123 @@
         .status-action { border-color: var(--accent-color) !important; color: var(--accent-color) !important; }
         .status-error { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-        .scoreboard-title { font-size: 1rem; font-weight: 600; text-align: center; margin-bottom: 5px; color: var(--text-primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .scoreboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
+        }
+        
+        .scoreboard-title { 
+            font-size: 1rem; 
+            font-weight: 600; 
+            color: var(--text-primary); 
+        }
+        
+        .toggle-placar-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+        }
+        
+        .round-info {
+            margin-top: auto;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            min-width: 60px;
+        }
+        
+        /* Botão flutuante para mobile */
+        .mobile-placar-btn {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4);
+            z-index: 1000;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .mobile-placar-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(187, 134, 252, 0.6);
+        }
+        
+        /* Modal do placar para mobile */
+        .mobile-placar-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .mobile-placar-modal.show {
+            display: flex;
+        }
+        
+        .mobile-placar-content {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 20px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .mobile-placar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        
+        .mobile-placar-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        
+        .mobile-placar-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .mobile-round-info {
+            margin-top: 15px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
         
         .score-entry {
             display: flex; justify-content: space-between; align-items: center;
@@ -910,13 +1030,37 @@
                 </div>
             </div>
 
-            <aside class="sidebar">
-                <div class="scoreboard-title">PLACAR</div>
-                <div id="scoreboard-list"></div>
-                <div style="margin-top:auto; font-size:0.75rem; color:var(--text-secondary); text-align:center; min-width: 60px;">
+            <aside class="sidebar" id="sidebar">
+                <div class="scoreboard-header">
+                    <div class="scoreboard-title">PLACAR</div>
+                    <button class="toggle-placar-btn" id="toggle-placar-btn" onclick="togglePlacar()">
+                        <span id="toggle-placar-icon">▼</span>
+                    </button>
+                </div>
+                <div id="scoreboard-content">
+                    <div id="scoreboard-list"></div>
+                </div>
+                <div class="round-info">
                     R <span id="round-num">1</span>
                 </div>
             </aside>
+            
+            <!-- Botão flutuante para mobile -->
+            <button class="mobile-placar-btn" id="mobile-placar-btn" onclick="toggleMobilePlacar()">
+                🏆 PLACAR
+            </button>
+            
+            <!-- Modal do placar para mobile -->
+            <div class="mobile-placar-modal" id="mobile-placar-modal">
+                <div class="mobile-placar-content">
+                    <div class="mobile-placar-header">
+                        <span>PLACAR</span>
+                        <button class="mobile-placar-close" onclick="toggleMobilePlacar()">✕</button>
+                    </div>
+                    <div id="mobile-scoreboard-list"></div>
+                    <div class="mobile-round-info">Rodada: <span id="mobile-round-num">1</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1559,9 +1703,13 @@
         updateUI();
         setStatus("Aguardando outros jogadores...");
         
-        // Se sou o host, verificar se todos jogaram
+        // Se sou o host, fazer bots jogarem e verificar se todos jogaram
         if (isHost) {
-            checkAllPlayersPlayed();
+            console.log('handleCardClick - player played, triggering bots');
+            // Primeiro fazer os bots jogarem
+            setTimeout(() => triggerBotPlays(), 300);
+            // Depois verificar se todos jogaram
+            setTimeout(() => checkAllPlayersPlayed(), 1000);
         }
     }
 
@@ -1673,12 +1821,11 @@
     // Verificar se todos os jogadores jogaram suas cartas
     function checkAllPlayersPlayed() {
         console.log('checkAllPlayersPlayed - START');
-        console.log('checkAllPlayersPlayed - players:', players.map(p => ({
-            name: p.name,
-            isBot: p.isBot,
-            lastPlayed: p.lastPlayed?.number || null,
-            handSize: p.hand?.length || 0
-        })));
+        console.log('checkAllPlayersPlayed - total players:', players.length);
+        
+        players.forEach((p, idx) => {
+            console.log(`checkAllPlayersPlayed - Player ${idx}: ${p.name}, isBot: ${p.isBot}, lastPlayed: ${p.lastPlayed?.number || 'null'}, handSize: ${p.hand?.length || 0}`);
+        });
         
         const allPlayed = players.every(p => p.lastPlayed !== null);
         console.log('checkAllPlayersPlayed - allPlayed:', allPlayed);
@@ -1691,9 +1838,11 @@
             console.log('checkAllPlayersPlayed - waiting for more players');
             // Verificar se há bots que ainda não jogaram
             const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed);
+            console.log('checkAllPlayersPlayed - bots not played count:', botsNotPlayed.length);
+            
             if (botsNotPlayed.length > 0 && isHost) {
                 console.log('checkAllPlayersPlayed - bots not played:', botsNotPlayed.map(b => b.name));
-                console.log('checkAllPlayersPlayed - triggering bot plays again');
+                console.log('checkAllPlayersPlayed - triggering bot plays again in 500ms');
                 setTimeout(() => triggerBotPlays(), 500);
             }
         }
@@ -2432,7 +2581,60 @@
             });
         }
         
+        // Atualizar placar mobile também
+        const mobileSbList = document.getElementById("mobile-scoreboard-list");
+        if (mobileSbList) {
+            mobileSbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}${botIcon}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                mobileSbList.appendChild(entry);
+            });
+        }
+        
+        // Atualizar número da rodada no mobile
+        const mobileRoundNum = document.getElementById("mobile-round-num");
+        if (mobileRoundNum) {
+            mobileRoundNum.textContent = currentTurn;
+        }
+        
         updateBotsActionArea();
+    }
+    
+    // Função para alternar o placar mobile
+    function toggleMobilePlacar() {
+        const modal = document.getElementById('mobile-placar-modal');
+        if (modal) {
+            modal.classList.toggle('show');
+        }
+    }
+    
+    // Função para alternar o placar no desktop (se necessário)
+    function togglePlacar() {
+        const content = document.getElementById('scoreboard-content');
+        const icon = document.getElementById('toggle-placar-icon');
+        if (content && icon) {
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
     }
 
     // Check for room code in URL
