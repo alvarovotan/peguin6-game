@@ -678,11 +678,12 @@
     </div>
 
     <!-- End Game Overlay -->
-    <div id="overlay">
-        <div class="modal-content">
-            <h2 id="end-title">Fim de Jogo</h2>
-            <div id="end-message" style="margin-top: 20px; line-height: 1.6;"></div>
-            <button onclick="location.reload()">Jogar Novamente</button>
+    <div id="overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 id="end-title" style="font-size: 2rem; margin-bottom: 10px; color: var(--accent-color);">Fim de Jogo!</h2>
+            <div id="end-winner" style="font-size: 1.3rem; margin-bottom: 20px; font-weight: bold;"></div>
+            <div id="end-ranking" style="margin-top: 20px; line-height: 2; text-align: left; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px;"></div>
+            <button class="btn btn-primary" onclick="playAgain()" style="padding: 12px 40px; font-size: 1rem; margin-top: 20px;">JOGAR NOVAMENTE</button>
         </div>
     </div>
 
@@ -1361,14 +1362,11 @@
         } else if (payload.action === 'GAME_OVER') {
             gameState = "END";
             
-            // Exibir ranking para jogadores que não são o host
+            // Exibir tela de fim de jogo para todos os jogadores
             if (payload.ranking) {
-                let rankingText = 'Fim de jogo!\n\nRanking Final:\n';
-                payload.ranking.forEach((p, idx) => {
-                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
-                    rankingText += `${idx + 1}º - ${p.name}${p.isBot ? ' 🤖' : ''}: ${p.score} pontos ${medal}\n`;
-                });
-                alert(rankingText);
+                const ranking = payload.ranking;
+                const winner = ranking[0]; // Primeiro do ranking (menos pontos)
+                showGameOverScreen(winner, ranking);
             }
             
             setStatus(`Fim de jogo! ${payload.winner} venceu!`, "action");
@@ -1578,24 +1576,22 @@
         players.forEach(p => p.lastPlayed = null);
         currentTurn++;
         
-        // Verificar fim de jogo (alguem atingiu 66 pontos)
-        const gameOver = players.some(p => p.score >= 66);
+        // Verificar se a mão acabou (todos os jogadores sem cartas)
+        const handEnded = players.every(p => p.hand.length === 0);
         
-        if (gameOver) {
+        // Verificar se alguem atingiu 66 pontos
+        const someoneReached66 = players.some(p => p.score >= 66);
+        
+        // O jogo só acaba quando a mão termina E alguem tem 66+ pontos
+        if (handEnded && someoneReached66) {
             gameState = "END";
             const winner = players.reduce((a, b) => a.score < b.score ? a : b);
-            const loser = players.reduce((a, b) => a.score > b.score ? a : b);
             
             // Criar ranking completo
             const ranking = [...players].sort((a, b) => a.score - b.score);
-            let rankingText = 'Fim de jogo!\n\nRanking Final:\n';
-            ranking.forEach((p, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
-                rankingText += `${idx + 1}º - ${p.name}${p.isBot ? ' 🤖' : ''}: ${p.score} pontos ${medal}\n`;
-            });
             
-            alert(rankingText);
-            setStatus(`Fim de jogo! ${winner.name} venceu com ${winner.score} pontos!`, "action");
+            // Mostrar tela de fim de jogo
+            showGameOverScreen(winner, ranking);
             
             // Broadcast fim de jogo para todos
             ws.send(JSON.stringify({
@@ -1607,22 +1603,22 @@
                 }
             }));
         } else {
-            // Distribuir novas cartas se necessario
-            if (isHost) {
+            // Distribuir novas cartas se a mão acabou
+            if (handEnded && isHost) {
                 distributeNewCards();
             }
             
             gameState = "SELECT";
             setStatus("Sua vez - escolha uma carta", "action");
+            
+            // Broadcast para outros jogadores
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'TURN_END'
+                }
+            }));
         }
-        
-        // Broadcast para outros jogadores
-        ws.send(JSON.stringify({
-            type: 'GAME_ACTION',
-            payload: {
-                action: 'TURN_END'
-            }
-        }));
         
         updateUI();
     }
@@ -1889,6 +1885,7 @@
         document.getElementById('game-screen').classList.remove('show');
         document.getElementById('lobby-screen').style.display = 'flex';
         document.getElementById('game-menu').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
         
         // Resetar variáveis
         gameState = "SELECT";
@@ -1897,6 +1894,35 @@
         isHost = false;
         playerId = null;
         roomId = null;
+    }
+    
+    function showGameOverScreen(winner, ranking) {
+        console.log('showGameOverScreen - winner:', winner, 'ranking:', ranking);
+        
+        // Preencher o vencedor
+        const winnerDiv = document.getElementById('end-winner');
+        winnerDiv.innerHTML = `🏆 ${winner.name}${winner.isBot ? ' 🤖' : ''} venceu!`;
+        
+        // Preencher o ranking
+        const rankingDiv = document.getElementById('end-ranking');
+        let rankingHTML = '<div style="text-align: center; font-weight: bold; margin-bottom: 15px; color: var(--accent-color);">Ranking Final</div>';
+        ranking.forEach((p, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
+            const botIcon = p.isBot ? ' 🤖' : '';
+            rankingHTML += `<div style="display: flex; justify-content: space-between; padding: 8px; background: ${idx === 0 ? 'rgba(187, 134, 252, 0.1)' : 'transparent'}; border-radius: 4px; margin-bottom: 5px;">`;
+            rankingHTML += `<span>${medal} ${p.name}${botIcon}</span>`;
+            rankingHTML += `<span style="font-weight: bold;">${p.score} pts</span>`;
+            rankingHTML += `</div>`;
+        });
+        rankingDiv.innerHTML = rankingHTML;
+        
+        // Mostrar o overlay
+        document.getElementById('overlay').style.display = 'flex';
+    }
+    
+    function playAgain() {
+        // Recarregar a página para começar um novo jogo
+        location.reload();
     }
 
     function setStatus(msg, type = "normal") {
