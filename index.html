@@ -1437,29 +1437,57 @@
     }
     
     function executeBotPlay(bot, card, cardIndex) {
+        console.log('executeBotPlay - START - bot:', bot.name, 'card:', card.number, 'cardIndex:', cardIndex);
+        
+        // Verificar se WebSocket está conectado
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            console.error('executeBotPlay - WebSocket not connected! readyState:', ws?.readyState);
+            // Se não estiver conectado, processar localmente apenas
+            if (cardIndex !== -1 && cardIndex < bot.hand.length) {
+                bot.hand.splice(cardIndex, 1);
+            }
+            bot.lastPlayed = card;
+            updateUI();
+            if (isHost) {
+                setTimeout(() => checkAllPlayersPlayed(), 300);
+            }
+            return;
+        }
+        
         // Remover carta da mão do bot
         if (cardIndex !== -1 && cardIndex < bot.hand.length) {
             bot.hand.splice(cardIndex, 1);
+            console.log('executeBotPlay - removed card from hand, remaining:', bot.hand.length);
         }
         bot.lastPlayed = card;
+        console.log('executeBotPlay - set lastPlayed:', card.number);
         
         // Enviar jogada do bot para o servidor
-        ws.send(JSON.stringify({
-            type: 'GAME_ACTION',
-            payload: {
-                action: 'PLAY_CARD',
-                cardIndex: cardIndex,
-                card: card,
-                fromPlayerId: bot.id
-            }
-        }));
+        try {
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'PLAY_CARD',
+                    cardIndex: cardIndex,
+                    card: card,
+                    fromPlayerId: bot.id
+                }
+            }));
+            console.log('executeBotPlay - sent PLAY_CARD to server');
+        } catch (error) {
+            console.error('executeBotPlay - error sending to server:', error);
+        }
         
         updateUI();
+        console.log('executeBotPlay - updated UI');
         
         // Verificar se todos jogaram
         if (isHost) {
+            console.log('executeBotPlay - scheduling checkAllPlayersPlayed');
             setTimeout(() => checkAllPlayersPlayed(), 300);
         }
+        
+        console.log('executeBotPlay - END');
     }
 
     function syncGameState(state) {
@@ -1644,12 +1672,30 @@
 
     // Verificar se todos os jogadores jogaram suas cartas
     function checkAllPlayersPlayed() {
+        console.log('checkAllPlayersPlayed - START');
+        console.log('checkAllPlayersPlayed - players:', players.map(p => ({
+            name: p.name,
+            isBot: p.isBot,
+            lastPlayed: p.lastPlayed?.number || null,
+            handSize: p.hand?.length || 0
+        })));
+        
         const allPlayed = players.every(p => p.lastPlayed !== null);
-        console.log('checkAllPlayersPlayed:', allPlayed, players.map(p => p.lastPlayed?.number));
+        console.log('checkAllPlayersPlayed - allPlayed:', allPlayed);
         
         if (allPlayed) {
+            console.log('checkAllPlayersPlayed - all players played, processing round');
             // Pequeno delay para garantir que a UI atualize
             setTimeout(() => processRound(), 500);
+        } else {
+            console.log('checkAllPlayersPlayed - waiting for more players');
+            // Verificar se há bots que ainda não jogaram
+            const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed);
+            if (botsNotPlayed.length > 0 && isHost) {
+                console.log('checkAllPlayersPlayed - bots not played:', botsNotPlayed.map(b => b.name));
+                console.log('checkAllPlayersPlayed - triggering bot plays again');
+                setTimeout(() => triggerBotPlays(), 500);
+            }
         }
     }
     
