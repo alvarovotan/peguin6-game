@@ -1965,11 +1965,8 @@
         
         console.log('triggerBotPlays - checking bots, gameState:', gameState);
         
-        // Verificar se estamos no estado correto
-        if (gameState !== 'SELECT') {
-            console.log('triggerBotPlays - wrong gameState, skipping');
-            return;
-        }
+        // NÃO verificar gameState - bots devem jogar independentemente do estado
+        // Isso permite que bots joguem mesmo quando o jogador humano está em WAITING
         
         let delay = 500;
         let botsToPlay = [];
@@ -1986,12 +1983,12 @@
             const playDelay = delay + (i * 600);
             console.log('triggerBotPlays - scheduling', bot.player.name, 'to play in', playDelay, 'ms');
             setTimeout(() => {
-                // Verificar novamente antes de jogar
-                if (gameState === 'SELECT' && !bot.player.lastPlayed && bot.player.hand && bot.player.hand.length > 0) {
+                // Verificar apenas se o bot ainda não jogou e tem cartas
+                if (!bot.player.lastPlayed && bot.player.hand && bot.player.hand.length > 0) {
                     console.log('triggerBotPlays - executing play for', bot.player.name);
                     makeBotPlay(bot.index);
                 } else {
-                    console.log('triggerBotPlays - skipping', bot.player.name, '- conditions not met');
+                    console.log('triggerBotPlays - skipping', bot.player.name, '- already played or no cards');
                 }
             }, playDelay);
         });
