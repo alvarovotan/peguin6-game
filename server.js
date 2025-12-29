@@ -73,10 +73,10 @@ wss.on('connection', (ws) => {
                     }
 
                     const room = rooms.get(roomId);
-                    if (room.players.length >= 4) {
+                    if (room.players.length >= 10) {
                         ws.send(JSON.stringify({
                             type: 'ERROR',
-                            payload: { message: 'Sala cheia (máximo 4 jogadores)' }
+                            payload: { message: 'Sala cheia (máximo 10 jogadores)' }
                         }));
                         return;
                     }

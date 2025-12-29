@@ -1174,7 +1174,7 @@
         // Desabilitar botões se necessário
         const addBotBtn = document.getElementById('add-bot-btn');
         const removeBotBtn = document.getElementById('remove-bot-btn');
-        if (addBotBtn) addBotBtn.disabled = playersList.length >= 4;
+        if (addBotBtn) addBotBtn.disabled = playersList.length >= 10;
         if (removeBotBtn) removeBotBtn.disabled = botCount === 0;
     }
 
@@ -1229,8 +1229,8 @@
     
     function addBotToRoom() {
         if (!isHost) return;
-        if (players.length >= 4) {
-            showError('Maximo de 4 jogadores');
+        if (players.length >= 10) {
+            showError('Máximo de 10 jogadores');
             return;
         }
         
@@ -1783,36 +1783,50 @@
             
             // Se for um BOT, escolher automaticamente
             if (currentPlayer.isBot) {
-                console.log('placeCardOnBoard - bot choosing row automatically');
+                console.log('placeCardOnBoard - BOT needs to choose row:', currentPlayer.name, 'card:', card.number);
                 let minPoints = Infinity;
                 let minRow = 0;
                 
                 for (let i = 0; i < ROW_COUNT; i++) {
                     const points = boardRows[i].reduce((acc, c) => acc + c.tdb, 0);
+                    console.log('placeCardOnBoard - row', i, 'has', points, 'points');
                     if (points < minPoints) {
                         minPoints = points;
                         minRow = i;
                     }
                 }
                 
+                console.log('placeCardOnBoard - bot chose row', minRow, 'with', minPoints, 'points');
+                
                 // Bot pega os pontos da fileira
                 players[playerIndex].score += minPoints;
                 boardRows[minRow] = [card];
                 
+                console.log('placeCardOnBoard - updated bot score to', players[playerIndex].score);
+                console.log('placeCardOnBoard - updated board row', minRow);
+                
                 // Broadcast para outros jogadores
-                ws.send(JSON.stringify({
-                    type: 'GAME_ACTION',
-                    payload: {
-                        action: 'CARD_PLACED',
-                        rowIndex: minRow,
-                        card: card,
-                        playerId: currentPlayer.id,
-                        isSixthCard: true,
-                        points: minPoints
-                    }
-                }));
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'CARD_PLACED',
+                            rowIndex: minRow,
+                            card: card,
+                            playerId: currentPlayer.id,
+                            isSixthCard: true,
+                            points: minPoints
+                        }
+                    }));
+                    console.log('placeCardOnBoard - sent CARD_PLACED to server');
+                } else {
+                    console.error('placeCardOnBoard - WebSocket not connected!');
+                }
+                
+                updateUI();
                 
                 // IMPORTANTE: Para bots, retornamos false para que processNextCard continue o processamento
+                console.log('placeCardOnBoard - bot finished choosing row, returning false');
                 return false;
             } else {
                 // Para jogadores HUMANOS, enviar mensagem para que ELES escolham
@@ -1820,13 +1834,15 @@
                 
                 // Se for EU (o jogador local), mostrar a UI de escolha
                 if (playerIndex === myPlayerIndex) {
-                    console.log('placeCardOnBoard - I need to choose row');
+                    console.log('placeCardOnBoard - I (human player) need to choose row');
+                    console.log('placeCardOnBoard - setting gameState to CHOOSE_ROW');
                     pendingPlayerCard = card;
                     selectedRowIndex = null;
                     gameState = "CHOOSE_ROW";
                     setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
                     startChooseRowTimer(); // Iniciar timer de 30 segundos
                     updateUI();
+                    console.log('placeCardOnBoard - UI updated, waiting for player selection');
                     return true; // Precisa de seleção manual
                 } else {
                     // Se for OUTRO jogador humano, enviar mensagem para ele escolher
