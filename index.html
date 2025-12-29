@@ -371,30 +371,42 @@
             gap: var(--row-gap);
         }
 
-        .row.selectable { background-color: rgba(187, 134, 252, 0.15); border-color: var(--accent-color); border-width: 3px; box-shadow: 0 0 16px rgba(187, 134, 252, 0.5); position: relative; }
+        .row-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
         
-        .buy-row-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
+        .row-radio {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+        
+        .row.selectable { 
+            background-color: rgba(187, 134, 252, 0.15); 
+            border-color: var(--accent-color); 
+            border-width: 2px; 
+            box-shadow: 0 0 12px rgba(187, 134, 252, 0.4); 
             cursor: pointer;
             transition: all 0.2s;
-            z-index: 10;
         }
         
-        .buy-row-btn:hover {
-            background: rgba(187, 134, 252, 1);
-            transform: translateY(-50%) scale(1.05);
-            box-shadow: 0 4px 12px rgba(187, 134, 252, 0.6);
+        .row.selectable:hover {
+            border-width: 3px;
+            box-shadow: 0 0 16px rgba(187, 134, 252, 0.6);
         }
+        
+        .row.selected {
+            background-color: rgba(187, 134, 252, 0.3);
+            border-color: var(--accent-color);
+            border-width: 3px;
+            box-shadow: 0 0 20px rgba(187, 134, 252, 0.8);
+        }
+        
+
         .row.full-danger { border: 1px solid rgba(207, 102, 121, 0.3); background: linear-gradient(90deg, rgba(207,102,121,0.05) 0%, transparent 100%); }
 
         .slot {
@@ -592,11 +604,15 @@
             <div class="game-area">
                 <div id="status-bar">Aguardando jogadores...</div>
                 <div class="bots-action-area" id="bots-action-area"></div>
+                <div id="choose-row-title" style="display: none; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent-color); margin-bottom: 15px; text-transform: uppercase;">Selecione a Fileira</div>
                 <div class="board" id="board">
                     <div class="row" id="row-0"></div>
                     <div class="row" id="row-1"></div>
                     <div class="row" id="row-2"></div>
                     <div class="row" id="row-3"></div>
+                </div>
+                <div id="buy-row-container" style="display: none; text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" id="buy-row-btn" onclick="confirmRowPurchase()" style="padding: 12px 40px; font-size: 1rem; font-weight: bold;">COMPRAR FILEIRA</button>
                 </div>
                 <div class="player-area">
                     <div style="margin-bottom:5px; color:var(--text-secondary); font-size:0.8rem; text-align:center;">SUA MÃO</div>
@@ -660,6 +676,7 @@
     let roundSelections = [];
     let pendingPlayerCard = null;
     let myPlayerIndex = -1;
+    let selectedRowIndex = null; // Índice da fileira selecionada para compra
 
     // --- WebSocket Connection ---
     function connectWebSocket() {
@@ -1538,46 +1555,75 @@
         }));
     }
 
-    function handleRowClick(rowIdx) {
-        console.log('handleRowClick called - gameState:', gameState, 'rowIdx:', rowIdx, 'pendingCard:', pendingPlayerCard);
+    // Função para selecionar uma fileira (marca o radio button)
+    function selectRow(rowIdx) {
+        console.log('selectRow called - rowIdx:', rowIdx);
         
         if (gameState !== "CHOOSE_ROW") {
-            console.log('handleRowClick - ignoring click, not in CHOOSE_ROW state');
+            console.log('selectRow - ignoring, not in CHOOSE_ROW state');
             return;
         }
         if (!pendingPlayerCard) {
-            console.log('handleRowClick - ignoring click, no pending card');
+            console.log('selectRow - ignoring, no pending card');
+            return;
+        }
+        
+        selectedRowIndex = rowIdx;
+        console.log('selectRow - selected row:', selectedRowIndex);
+        updateUI();
+    }
+    
+    // Função para confirmar a compra da fileira selecionada
+    function confirmRowPurchase() {
+        console.log('confirmRowPurchase called - selectedRowIndex:', selectedRowIndex);
+        
+        if (gameState !== "CHOOSE_ROW") {
+            console.log('confirmRowPurchase - ignoring, not in CHOOSE_ROW state');
+            return;
+        }
+        if (!pendingPlayerCard) {
+            console.log('confirmRowPurchase - ignoring, no pending card');
+            return;
+        }
+        if (selectedRowIndex === null) {
+            showError('Selecione uma fileira primeiro!');
             return;
         }
         if (myPlayerIndex === -1) {
-            console.log('handleRowClick - ignoring click, myPlayerIndex not set');
+            console.log('confirmRowPurchase - ignoring, myPlayerIndex not set');
             return;
         }
 
-        console.log('handleRowClick - processing row selection:', rowIdx);
+        console.log('confirmRowPurchase - processing row selection:', selectedRowIndex);
         
-        const row = boardRows[rowIdx];
+        const row = boardRows[selectedRowIndex];
         const points = row.reduce((acc, c) => acc + c.tdb, 0);
         
         // Adicionar a carta a fileira e jogador pega os pontos
         players[myPlayerIndex].score += points;
-        boardRows[rowIdx] = [pendingPlayerCard];
+        boardRows[selectedRowIndex] = [pendingPlayerCard];
         
         // Enviar para o servidor
         ws.send(JSON.stringify({
             type: 'GAME_ACTION',
             payload: {
                 action: 'ROW_SELECTED',
-                rowIndex: rowIdx,
+                rowIndex: selectedRowIndex,
                 card: pendingPlayerCard,
                 points: points
             }
         }));
         
         pendingPlayerCard = null;
+        selectedRowIndex = null;
         gameState = "WAITING";
         setStatus("Aguardando outros jogadores...");
         updateUI();
+    }
+    
+    // Função antiga handleRowClick - mantida para compatibilidade
+    function handleRowClick(rowIdx) {
+        selectRow(rowIdx);
     }
 
     // --- UI Helpers ---
@@ -1677,6 +1723,20 @@
 
     function updateUI() {
         if (!document.getElementById('game-screen').classList.contains('show')) return;
+        
+        // Mostrar/ocultar título e botão de compra
+        const chooseRowTitle = document.getElementById('choose-row-title');
+        const buyRowContainer = document.getElementById('buy-row-container');
+        const buyRowBtn = document.getElementById('buy-row-btn');
+        
+        if (gameState === "CHOOSE_ROW" && pendingPlayerCard) {
+            if (chooseRowTitle) chooseRowTitle.style.display = 'block';
+            if (buyRowContainer) buyRowContainer.style.display = 'block';
+            if (buyRowBtn) buyRowBtn.disabled = selectedRowIndex === null;
+        } else {
+            if (chooseRowTitle) chooseRowTitle.style.display = 'none';
+            if (buyRowContainer) buyRowContainer.style.display = 'none';
+        }
 
         for (let i = 0; i < ROW_COUNT; i++) {
             const rowDiv = document.getElementById(`row-${i}`);
@@ -1685,8 +1745,14 @@
             const rowCards = boardRows[i] || [];
             const isDanger = rowCards.length === MAX_ROW_LENGTH;
             
-            if (gameState === "CHOOSE_ROW") rowDiv.className = "row selectable";
-            else rowDiv.className = "row";
+            if (gameState === "CHOOSE_ROW") {
+                rowDiv.className = "row selectable";
+                if (selectedRowIndex === i) rowDiv.classList.add("selected");
+                rowDiv.onclick = () => selectRow(i);
+            } else {
+                rowDiv.className = "row";
+                rowDiv.onclick = null;
+            }
             
             if (isDanger) rowDiv.classList.add("full-danger");
 
@@ -1702,16 +1768,6 @@
                     sixthSlot.className = "slot sixth";
                     rowDiv.appendChild(sixthSlot);
                 }
-            }
-            
-            // Adicionar botão de COMPRAR se o jogador precisa escolher uma fileira
-            if (gameState === "CHOOSE_ROW" && pendingPlayerCard) {
-                const points = rowCards.reduce((acc, c) => acc + c.tdb, 0);
-                const buyBtn = document.createElement("button");
-                buyBtn.className = "btn buy-row-btn";
-                buyBtn.textContent = `COMPRAR (${points} pts)`;
-                buyBtn.onclick = () => handleRowClick(i);
-                rowDiv.appendChild(buyBtn);
             }
         }
 
