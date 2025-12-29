@@ -1265,6 +1265,17 @@
                 }
                 updateUI();
             }
+        } else if (payload.action === 'CHOOSE_ROW_REQUEST') {
+            // Outro jogador precisa escolher uma fileira - verificar se sou eu
+            console.log('CHOOSE_ROW_REQUEST received - playerId:', payload.playerId, 'my playerId:', playerId);
+            if (payload.playerId === playerId) {
+                console.log('I need to choose a row!');
+                pendingPlayerCard = payload.card;
+                selectedRowIndex = null;
+                gameState = "CHOOSE_ROW";
+                setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                updateUI();
+            }
         } else if (payload.action === 'TURN_END') {
             players.forEach(p => p.lastPlayed = null);
             currentTurn++;
@@ -1369,17 +1380,9 @@
             // Carta é menor que todas as últimas - jogador deve escolher uma fileira
             const currentPlayer = players[playerIndex];
             
-            // Se for o jogador humano (não bot), pausar e pedir escolha
-            if (playerIndex === myPlayerIndex && !currentPlayer.isBot) {
-                console.log('placeCardOnBoard - waiting for human player to choose row');
-                // Armazenar a carta pendente para o jogador escolher a fileira
-                pendingPlayerCard = card;
-                gameState = "CHOOSE_ROW";
-                setStatus("Sua carta é menor que todas! Escolha uma fileira para comprar", "action");
-                updateUI();
-                return;
-            } else {
-                // Para bots ou outros jogadores, escolher a fileira estrategicamente
+            // Se for um BOT, escolher automaticamente
+            if (currentPlayer.isBot) {
+                console.log('placeCardOnBoard - bot choosing row automatically');
                 let minPoints = Infinity;
                 let minRow = 0;
                 
@@ -1391,7 +1394,7 @@
                     }
                 }
                 
-                // Jogador pega os pontos da fileira
+                // Bot pega os pontos da fileira
                 players[playerIndex].score += minPoints;
                 boardRows[minRow] = [card];
                 
@@ -1402,11 +1405,38 @@
                         action: 'CARD_PLACED',
                         rowIndex: minRow,
                         card: card,
-                        playerId: players[playerIndex].id,
+                        playerId: currentPlayer.id,
                         isSixthCard: true,
                         points: minPoints
                     }
                 }));
+            } else {
+                // Para jogadores HUMANOS, enviar mensagem para que ELES escolham
+                console.log('placeCardOnBoard - human player needs to choose row, playerIndex:', playerIndex, 'myPlayerIndex:', myPlayerIndex);
+                
+                // Se for EU (o jogador local), mostrar a UI de escolha
+                if (playerIndex === myPlayerIndex) {
+                    console.log('placeCardOnBoard - I need to choose row');
+                    pendingPlayerCard = card;
+                    selectedRowIndex = null;
+                    gameState = "CHOOSE_ROW";
+                    setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                    updateUI();
+                    return;
+                } else {
+                    // Se for OUTRO jogador humano, enviar mensagem para ele escolher
+                    console.log('placeCardOnBoard - sending CHOOSE_ROW_REQUEST to player:', currentPlayer.id);
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'CHOOSE_ROW_REQUEST',
+                            playerId: currentPlayer.id,
+                            card: card,
+                            playerIndex: playerIndex
+                        }
+                    }));
+                    return; // Aguardar resposta do jogador
+                }
             }
         } else {
             // Verificar se a fileira vai ficar com 6 cartas
@@ -1610,7 +1640,8 @@
                 action: 'ROW_SELECTED',
                 rowIndex: selectedRowIndex,
                 card: pendingPlayerCard,
-                points: points
+                points: points,
+                playerId: playerId
             }
         }));
         
