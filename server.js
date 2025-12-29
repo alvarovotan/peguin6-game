@@ -164,6 +164,47 @@ wss.on('connection', (ws) => {
                         }
                     });
                     break;
+                case 'RESTART_REQUEST':
+                    const restartRoom = rooms.get(roomId);
+                    if (!restartRoom) return;
+                    const requester = restartRoom.players.find(p => p.id === playerId);
+                    restartRoom.players.forEach(p => {
+                        if (p.id !== playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            p.ws.send(JSON.stringify({
+                                type: 'GAME_UPDATE',
+                                payload: { 
+                                    action: 'RESTART_REQUEST', 
+                                    fromPlayerId: playerId,
+                                    fromPlayerName: requester ? requester.name : 'Jogador'
+                                }
+                            }));
+                        }
+                    });
+                    break;
+                case 'RESTART_CONFIRMED':
+                    const confirmRoom = rooms.get(roomId);
+                    if (!confirmRoom) return;
+                    confirmRoom.players.forEach(p => {
+                        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            p.ws.send(JSON.stringify({
+                                type: 'GAME_UPDATE',
+                                payload: { action: 'GAME_RESTARTED' }
+                            }));
+                        }
+                    });
+                    break;
+                case 'SURRENDER':
+                    const surrenderRoom = rooms.get(roomId);
+                    if (!surrenderRoom) return;
+                    surrenderRoom.players.forEach(p => {
+                        if (p.id !== playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            p.ws.send(JSON.stringify({
+                                type: 'GAME_UPDATE',
+                                payload: { action: 'PLAYER_SURRENDERED', fromPlayerId: playerId }
+                            }));
+                        }
+                    });
+                    break;
             }
         } catch (error) {
             console.error('Error processing message:', error);

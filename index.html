@@ -557,6 +557,7 @@
         
         <!-- Game Menu -->
         <div id="game-menu" style="display: none; position: fixed; top: 60px; right: 10px; background: var(--surface-color); border: 1px solid var(--accent-color); border-radius: 8px; padding: 10px; z-index: 1000; min-width: 150px;">
+            <button class="btn" style="width: 100%; margin-bottom: 5px; padding: 8px; font-size: 0.8rem;" id="restart-game-btn-menu" onclick="requestRestart()">Reiniciar Jogo</button>
             <button class="btn" style="width: 100%; margin-bottom: 5px; padding: 8px; font-size: 0.8rem;" onclick="surrenderGame()">Desistir</button>
             <button class="btn" style="width: 100%; padding: 8px; font-size: 0.8rem;" onclick="exitGame()">Sair para Menu</button>
         </div>
@@ -1190,6 +1191,27 @@
             gameState = "SELECT";
             updateUI();
             setStatus("Sua vez", "action");
+        } else if (payload.action === 'RESTART_REQUEST') {
+            if (confirm(`O jogador ${payload.fromPlayerName} deseja reiniciar o jogo. Você aceita?`)) {
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'RESTART_CONFIRMED'
+                    }
+                }));
+            }
+        } else if (payload.action === 'GAME_RESTARTED') {
+            alert('O jogo foi reiniciado!');
+            // Resetar estado local e iniciar nova rodada
+            players.forEach(p => {
+                p.score = 0;
+                p.hand = [];
+                p.lastPlayed = null;
+            });
+            currentTurn = 1;
+            if (isHost) {
+                startNewRound();
+            }
         }
     }
 
@@ -1259,7 +1281,7 @@
                 updateUI();
                 return;
             } else {
-                // Para outros jogadores (ou host automático), escolher a fileira com menos pontos
+                // Para bots ou outros jogadores, escolher a fileira estrategicamente
                 let minPoints = Infinity;
                 let minRow = 0;
                 
@@ -1452,16 +1474,26 @@
         }
     }
     
+    function requestRestart() {
+        if (confirm('Deseja reiniciar o jogo? Todos os jogadores precisam confirmar.')) {
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'RESTART_REQUEST'
+                }
+            }));
+            showGameMenu();
+        }
+    }
+
     function surrenderGame() {
         if (confirm('Deseja desistir do jogo?')) {
-            // Enviar mensagem de desistência
             ws.send(JSON.stringify({
                 type: 'GAME_ACTION',
                 payload: {
                     action: 'SURRENDER'
                 }
             }));
-            // Voltar para o lobby
             setTimeout(() => exitGame(), 1000);
         }
     }
