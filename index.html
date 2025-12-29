@@ -603,6 +603,7 @@
                     <div id="bot-count" style="text-align: center; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary);"></div>
                 </div>
                 <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" id="start-game-btn" onclick="startGame()" disabled>Iniciar Jogo</button>
+                <button class="btn" style="width: 100%; margin-top: 10px; border-color: rgba(255,255,255,0.2);" onclick="exitGame()">Voltar ao Início</button>
             </div>
 
             <div class="error-message" id="error-message"></div>
@@ -1881,30 +1882,17 @@
             setTimeout(() => exitGame(), 1000);
         }
     }
-    
-    function exitGame() {
-        // Fechar conexão WebSocket
-        if (ws) ws.close();
-        
-        // Voltar para o lobby
-        document.getElementById('game-screen').classList.remove('show');
-        document.getElementById('lobby-screen').style.display = 'flex';
-        document.getElementById('game-menu').style.display = 'none';
-        document.getElementById('overlay').style.display = 'none';
-        
-        // Resetar variáveis
-        gameState = "SELECT";
-        players = [];
-        myPlayerIndex = -1;
-        isHost = false;
-        playerId = null;
-        roomId = null;
+        function exitGame() {
+        if (confirm("Deseja realmente sair e voltar para o menu principal?")) {
+            // Fechar conexão WebSocket
+            if (ws) ws.close();
+            
+            // Limpar URL (remover código da sala) e recarregar
+            window.location.href = window.location.origin + window.location.pathname;
+        }
     }
-    
+
     function showGameOverScreen(winner, ranking) {
-        console.log('showGameOverScreen - winner:', winner, 'ranking:', ranking);
-        
-        // Preencher o vencedor
         const winnerDiv = document.getElementById('end-winner');
         winnerDiv.innerHTML = `🏆 ${winner.name}${winner.isBot ? ' 🤖' : ''} venceu!`;
         
