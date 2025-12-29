@@ -1216,6 +1216,21 @@
             if (isHost) {
                 startNewRound();
             }
+        } else if (payload.action === 'GAME_OVER') {
+            gameState = "END";
+            
+            // Exibir ranking para jogadores que não são o host
+            if (payload.ranking) {
+                let rankingText = 'Fim de jogo!\n\nRanking Final:\n';
+                payload.ranking.forEach((p, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+                    rankingText += `${idx + 1}º - ${p.name}${p.isBot ? ' 🤖' : ''}: ${p.score} pontos ${medal}\n`;
+                });
+                alert(rankingText);
+            }
+            
+            setStatus(`Fim de jogo! ${payload.winner} venceu!`, "action");
+            updateUI();
         }
     }
 
@@ -1276,8 +1291,11 @@
         
         if (bestRow === -1) {
             // Carta é menor que todas as últimas - jogador deve escolher uma fileira
-            // Se for o jogador humano, pausar e pedir escolha
-            if (playerIndex === myPlayerIndex && playerId === players[playerIndex].id) {
+            const currentPlayer = players[playerIndex];
+            
+            // Se for o jogador humano (não bot), pausar e pedir escolha
+            if (playerIndex === myPlayerIndex && !currentPlayer.isBot) {
+                console.log('placeCardOnBoard - waiting for human player to choose row');
                 // Armazenar a carta pendente para o jogador escolher a fileira
                 pendingPlayerCard = card;
                 gameState = "CHOOSE_ROW";
@@ -1367,7 +1385,28 @@
         if (gameOver) {
             gameState = "END";
             const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+            const loser = players.reduce((a, b) => a.score > b.score ? a : b);
+            
+            // Criar ranking completo
+            const ranking = [...players].sort((a, b) => a.score - b.score);
+            let rankingText = 'Fim de jogo!\n\nRanking Final:\n';
+            ranking.forEach((p, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+                rankingText += `${idx + 1}º - ${p.name}${p.isBot ? ' 🤖' : ''}: ${p.score} pontos ${medal}\n`;
+            });
+            
+            alert(rankingText);
             setStatus(`Fim de jogo! ${winner.name} venceu com ${winner.score} pontos!`, "action");
+            
+            // Broadcast fim de jogo para todos
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'GAME_OVER',
+                    winner: winner.name,
+                    ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                }
+            }));
         } else {
             // Distribuir novas cartas se necessario
             if (isHost) {
