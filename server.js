@@ -167,6 +167,24 @@ wss.on('connection', (ws) => {
                         }
                     });
                     break;
+
+                case 'UPDATE_BOTS':
+                    if (!roomId || !rooms.has(roomId)) return;
+                    const botRoom = rooms.get(roomId);
+                    if (botRoom.hostId !== playerId) return;
+
+                    // Notificar todos os jogadores sobre a nova lista (incluindo bots)
+                    botRoom.players.forEach(p => {
+                        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            p.ws.send(JSON.stringify({
+                                type: 'PLAYER_JOINED',
+                                payload: {
+                                    players: payload.players
+                                }
+                            }));
+                        }
+                    });
+                    break;
                 case 'RESTART_REQUEST':
                     const restartRoom = rooms.get(roomId);
                     if (!restartRoom) return;
@@ -229,7 +247,10 @@ wss.on('connection', (ws) => {
                 if (p.ws && p.ws.readyState === WebSocket.OPEN) {
                     p.ws.send(JSON.stringify({
                         type: 'PLAYER_LEFT',
-                        payload: { playerId, players: room.players.map(pl => ({ id: pl.id, name: pl.name })) }
+                        payload: { 
+                            playerId, 
+                            players: room.players.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot || false })) 
+                        }
                     }));
                 }
             });

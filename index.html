@@ -565,7 +565,6 @@
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="createRoom()">Criar Sala</button>
                     <button class="btn" onclick="showJoinForm()">Entrar em Sala</button>
-                    <button class="btn" onclick="playSoloWithBots()">Jogar com Bots</button>
                 </div>
 
                 <div id="join-form" style="display: none; margin-top: 20px;">
@@ -862,52 +861,6 @@
         document.getElementById('room-code').value = '';
     }
     
-    function playSoloWithBots() {
-        const name = document.getElementById('player-name').value.trim();
-        if (!name) {
-            showError('Por favor, digite seu nome primeiro');
-            return;
-        }
-        playerName = name;
-        isHost = true;
-        playerId = 'player-' + Math.random().toString(36).substr(2, 9);
-        roomId = 'SOLO-' + Math.random().toString(36).substr(2, 4).toUpperCase();
-        
-        // Criar jogadores com bots
-        players = [
-            {
-                id: playerId,
-                name: playerName,
-                isBot: false,
-                hand: [],
-                score: 0,
-                lastPlayed: null
-            },
-            {
-                id: 'bot-1',
-                name: 'Bot 1',
-                isBot: true,
-                hand: [],
-                score: 0,
-                lastPlayed: null
-            },
-            {
-                id: 'bot-2',
-                name: 'Bot 2',
-                isBot: true,
-                hand: [],
-                score: 0,
-                lastPlayed: null
-            }
-        ];
-        
-        myPlayerIndex = 0;
-        
-        // Iniciar o jogo
-        document.getElementById('lobby-screen').style.display = 'none';
-        startNewRound();
-    }
-
     function joinRoom() {
         const code = document.getElementById('room-code').value.trim().toUpperCase();
         if (!code) {
@@ -932,15 +885,22 @@
     }
 
     function updatePlayersList(playersList) {
-        // Atualizar a variável players global preservando isBot
-        players = playersList.map(p => ({
-            id: p.id,
-            name: p.name,
-            isBot: p.isBot || false,
-            hand: p.hand || [],
-            score: p.score || 0,
-            lastPlayed: p.lastPlayed || null
-        }));
+        console.log('updatePlayersList - received:', playersList.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+        
+        // Atualizar a variável players global preservando dados locais
+        const newPlayers = playersList.map(p => {
+            // Verificar se já existe esse jogador localmente
+            const existing = players.find(ep => ep.id === p.id);
+            return {
+                id: p.id,
+                name: p.name,
+                isBot: p.isBot || false,
+                hand: existing?.hand || p.hand || [],
+                score: existing?.score || p.score || 0,
+                lastPlayed: existing?.lastPlayed || p.lastPlayed || null
+            };
+        });
+        players = newPlayers;
         
         const container = document.getElementById('players-list-content');
         container.innerHTML = '';
@@ -1034,9 +994,16 @@
             score: 0,
             lastPlayed: null
         };
-        
         players.push(newBot);
         updatePlayersList(players);
+        
+        // Sincronizar com outros jogadores
+        ws.send(JSON.stringify({
+            type: 'UPDATE_BOTS',
+            payload: {
+                players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
+            }
+        }));
         
         // Habilitar botao de iniciar se tiver 2+ jogadores
         const startBtn = document.getElementById('start-game-btn');
@@ -1054,12 +1021,21 @@
                 break;
             }
         }
-        if (botIndex === -1) {
-            showError('Nenhum bot para remover');
-            return;
+        
+        if (botIndex !== -1) {
+            players.splice(botIndex, 1);
+            updatePlayersList(players);
+            
+            // Sincronizar com outros jogadores
+            ws.send(JSON.stringify({
+                type: 'UPDATE_BOTS',
+                payload: {
+                    players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
+                }
+            }));
         }
-        players.splice(botIndex, 1);
-        updatePlayersList(players);
+        
+        // Desabilitar botao de iniciar se tiver menos de 2 jogadores
         const startBtn = document.getElementById('start-game-btn');
         if (startBtn && players.length < 2) {
             startBtn.disabled = true;
@@ -1504,7 +1480,8 @@
                     }
                 }));
                 
-                return false; // Bot não precisa de seleção manual
+                // IMPORTANTE: Para bots, retornamos false para que processNextCard continue o processamento
+                return false;
             } else {
                 // Para jogadores HUMANOS, enviar mensagem para que ELES escolham
                 console.log('placeCardOnBoard - human player needs to choose row, playerIndex:', playerIndex, 'myPlayerIndex:', myPlayerIndex);
@@ -1624,9 +1601,31 @@
                     action: 'TURN_END'
                 }
             }));
+            
+            // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
+            if (isHost) {
+                triggerBotPlays();
+            }
         }
         
         updateUI();
+    }
+    
+    // Função para fazer todos os bots jogarem
+    function triggerBotPlays() {
+        console.log('triggerBotPlays - checking bots');
+        let delay = 800;
+        players.forEach((p, idx) => {
+            if (p.isBot && !p.lastPlayed && p.hand.length > 0) {
+                console.log('triggerBotPlays - scheduling bot', p.name, 'to play in', delay, 'ms');
+                setTimeout(() => {
+                    if (gameState === 'SELECT' && !p.lastPlayed) {
+                        makeBotPlay(idx);
+                    }
+                }, delay);
+                delay += 800;
+            }
+        });
     }
     
     // Distribuir novas cartas para jogadores que ficaram sem
