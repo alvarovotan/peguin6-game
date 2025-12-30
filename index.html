@@ -287,11 +287,11 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 24px;
-                --card-h: 36px;
-                --row-gap: 2px;
-                --row-h: 44px;
-                --row-padding: 2px;
+                --card-w: 32px;
+                --card-h: 48px;
+                --row-gap: 3px;
+                --row-h: 58px;
+                --row-padding: 3px;
             }
             
             body {
@@ -376,7 +376,7 @@
             }
             
             .board {
-                padding: 4px;
+                padding: 6px;
                 width: 100%;
                 overflow-x: auto;
             }
@@ -387,13 +387,13 @@
             }
             
             .row-wrapper {
-                gap: 4px;
-                margin-bottom: 3px;
+                gap: 6px;
+                margin-bottom: 5px;
             }
             
             .radio-label {
-                width: 16px;
-                height: 16px;
+                width: 20px;
+                height: 20px;
                 border-width: 2px;
             }
             
@@ -457,14 +457,109 @@
             }
         }
         
-        /* --- Responsividade Mobile Pequeno --- */
+        /* --- Modo de Seleção de Fileira no Mobile --- */
+        @media (max-width: 768px) {
+            body.choosing-row .board {
+                max-height: 55vh;
+                overflow-y: auto;
+            }
+            
+            body.choosing-row :root {
+                --card-w: 24px;
+                --card-h: 36px;
+                --row-gap: 2px;
+                --row-h: 44px;
+                --row-padding: 2px;
+            }
+            
+            body.choosing-row .board {
+                padding: 4px;
+            }
+            
+            body.choosing-row .row-wrapper {
+                gap: 4px;
+                margin-bottom: 3px;
+            }
+            
+            body.choosing-row .radio-label {
+                width: 16px;
+                height: 16px;
+            }
+            
+            body.choosing-row .card {
+                width: 24px;
+                height: 36px;
+            }
+            
+            body.choosing-row .card-number {
+                font-size: 0.75rem;
+            }
+            
+            body.choosing-row .card-dots {
+                font-size: 3px;
+                line-height: 3px;
+            }
+            
+            body.choosing-row .slot {
+                width: 24px;
+                height: 36px;
+            }
+            
+            body.choosing-row .row {
+                height: 44px;
+                padding: 2px;
+                gap: 2px;
+            }
+        }
+        
         @media (max-width: 480px) {
-            :root {
+            body.choosing-row :root {
                 --card-w: 22px;
                 --card-h: 34px;
                 --row-gap: 1px;
                 --row-h: 40px;
                 --row-padding: 2px;
+            }
+            
+            body.choosing-row .radio-label {
+                width: 14px;
+                height: 14px;
+            }
+            
+            body.choosing-row .row-radio:checked + .radio-label::after {
+                width: 5px;
+                height: 5px;
+            }
+            
+            body.choosing-row .card {
+                width: 22px;
+                height: 34px;
+            }
+            
+            body.choosing-row .card-number {
+                font-size: 0.7rem;
+            }
+            
+            body.choosing-row .slot {
+                width: 22px;
+                height: 34px;
+            }
+            
+            body.choosing-row .row {
+                height: 40px;
+                padding: 2px;
+                gap: 1px;
+            }
+        }
+        
+        /* --- Responsividade Mobile Pequeno --- */
+        @media (max-width: 480px) {
+            :root {
+                --card-w: 28px;
+                --card-h: 42px;
+                --row-gap: 2px;
+                --row-h: 52px;
+                --row-padding: 3px;
             }
             
             .lobby-container {
@@ -500,14 +595,14 @@
             }
             
             .radio-label {
-                width: 14px;
-                height: 14px;
+                width: 18px;
+                height: 18px;
                 border-width: 2px;
             }
             
             .row-radio:checked + .radio-label::after {
-                width: 5px;
-                height: 5px;
+                width: 6px;
+                height: 6px;
             }
             
             header h1 {
@@ -2520,11 +2615,14 @@
         
         const isChooseRowMode = (gameState === "CHOOSE_ROW" && pendingPlayerCard);
         
+        // Adicionar/remover classe no body para aplicar estilos específicos no mobile
         if (isChooseRowMode) {
+            document.body.classList.add('choosing-row');
             if (chooseRowHeader) chooseRowHeader.style.display = 'block';
             if (buyRowContainer) buyRowContainer.style.display = 'block';
             if (buyRowBtn) buyRowBtn.disabled = selectedRowIndex === null;
         } else {
+            document.body.classList.remove('choosing-row');
             if (chooseRowHeader) chooseRowHeader.style.display = 'none';
             if (buyRowContainer) buyRowContainer.style.display = 'none';
         }
