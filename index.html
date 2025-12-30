@@ -287,17 +287,18 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 32px;
-                --card-h: 48px;
-                --row-gap: 3px;
-                --row-h: 58px;
-                --row-padding: 3px;
+                --card-w: 38px;
+                --card-h: 56px;
+                --row-gap: 4px;
+                --row-h: 68px;
+                --row-padding: 4px;
             }
             
             body {
                 overflow-y: auto;
-                height: auto;
+                height: 100vh;
                 min-height: 100vh;
+                position: relative;
             }
             
             .lobby-container {
@@ -322,22 +323,30 @@
             }
             
             #game-screen {
-                height: auto;
+                height: 100vh;
                 min-height: 100vh;
-                padding-bottom: 20px;
+                padding-bottom: 0;
+                display: flex;
+                flex-direction: column;
             }
             
             .main-layout {
                 flex-direction: column;
-                height: auto;
+                height: calc(100vh - 60px);
                 width: 100%;
                 padding: 0 5px;
                 gap: 10px;
+                overflow-y: auto;
+                padding-bottom: 180px;
             }
             
             .game-area {
                 width: 100%;
                 order: 1;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow-y: visible;
             }
             
             /* Ocultar sidebar no mobile - usar botão flutuante */
@@ -370,9 +379,21 @@
                 max-width: 70px;
             }
             
-            /* Ajustar layout do jogo para ocupar toda a tela */
-            .main-layout {
-                padding-bottom: 20px;
+            /* Botão de comprar fileira otimizado */
+            #buy-row-container {
+                position: fixed !important;
+                bottom: 165px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                z-index: 99 !important;
+                margin: 0 !important;
+            }
+            
+            #buy-row-btn {
+                padding: 14px 32px !important;
+                font-size: 1rem !important;
+                font-weight: bold !important;
+                box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4) !important;
             }
             
             .board {
@@ -423,6 +444,33 @@
                 line-height: 4px;
             }
             
+            /* Área do jogador como footer fixo */
+            .player-area {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 12px 8px 8px 8px !important;
+                background-color: var(--surface-color) !important;
+                border-radius: 16px 16px 0 0 !important;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.6) !important;
+                z-index: 100 !important;
+                border: 1px solid rgba(255,255,255,0.1) !important;
+                border-bottom: none !important;
+            }
+            
+            .player-area > div:first-child {
+                margin-bottom: 8px !important;
+                color: var(--text-secondary) !important;
+                font-size: 0.75rem !important;
+                text-align: center !important;
+                font-weight: 600 !important;
+                letter-spacing: 1px !important;
+            }
+            
             .hand-container {
                 padding: 10px;
             }
@@ -432,13 +480,16 @@
             }
             
             .hand {
-                gap: 4px;
+                gap: 6px;
                 flex-wrap: wrap;
                 justify-content: center;
+                padding: 0 4px;
             }
             
             .hand .card {
                 cursor: pointer;
+                width: 38px !important;
+                height: 56px !important;
             }
             
             .bots-action-area {
@@ -559,11 +610,16 @@
         /* --- Responsividade Mobile Pequeno --- */
         @media (max-width: 480px) {
             :root {
-                --card-w: 28px;
-                --card-h: 42px;
-                --row-gap: 2px;
-                --row-h: 52px;
+                --card-w: 34px;
+                --card-h: 50px;
+                --row-gap: 3px;
+                --row-h: 60px;
                 --row-padding: 3px;
+            }
+            
+            .hand .card {
+                width: 34px !important;
+                height: 50px !important;
             }
             
             .lobby-container {
