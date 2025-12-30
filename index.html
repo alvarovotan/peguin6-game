@@ -287,20 +287,20 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 38px;
-                --card-h: 56px;
+                --card-w: 36px;
+                --card-h: 54px;
                 --row-gap: 4px;
-                --row-h: 68px;
+                --row-h: 64px;
                 --row-padding: 4px;
             }
             
             body {
-                overflow-y: auto;
+                overflow: hidden;
                 height: 100vh;
                 min-height: 100vh;
-                position: relative;
             }
             
+            /* === LOBBY - Tela inicial limpa === */
             .lobby-container {
                 padding: 20px;
                 width: 95%;
@@ -322,22 +322,28 @@
                 width: 100%;
             }
             
+            /* === GAME SCREEN - Layout otimizado === */
             #game-screen {
                 height: 100vh;
                 min-height: 100vh;
                 padding-bottom: 0;
-                display: flex;
+                display: none;
                 flex-direction: column;
+                overflow: hidden;
+            }
+            
+            #game-screen.show {
+                display: flex;
             }
             
             .main-layout {
                 flex-direction: column;
-                height: calc(100vh - 60px);
+                height: calc(100vh - 55px);
                 width: 100%;
                 padding: 0 5px;
-                gap: 10px;
-                overflow-y: auto;
-                padding-bottom: 180px;
+                gap: 8px;
+                overflow: hidden;
+                padding-bottom: 0;
             }
             
             .game-area {
@@ -346,19 +352,49 @@
                 flex: 1;
                 display: flex;
                 flex-direction: column;
-                overflow-y: visible;
+                overflow: hidden;
+                padding-bottom: 140px;
             }
             
-            /* Ocultar sidebar no mobile - usar botão flutuante */
+            /* Ocultar sidebar no mobile */
             .sidebar {
                 display: none !important;
             }
             
-            /* Placar como modal/overlay retrátil no mobile */
+            /* Ocultar placar inline antigo no mobile */
             .mobile-inline-placar {
-                display: none;
+                display: none !important;
+            }
+            
+            /* Ocultar botão flutuante antigo */
+            .mobile-placar-btn {
+                display: none !important;
+            }
+            
+            /* Botão de placar no header - apenas mobile */
+            .mobile-placar-header-btn {
+                display: block !important;
+                background: rgba(187, 134, 252, 0.15);
+                border: 1px solid var(--accent-color);
+                color: var(--accent-color);
+                padding: 6px 14px;
+                border-radius: 20px;
+                font-size: 0.75rem;
+                font-weight: bold;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .mobile-placar-header-btn:hover {
+                background: var(--accent-color);
+                color: var(--bg-color);
+            }
+            
+            /* Modal do placar retrátil */
+            .mobile-placar-modal {
                 position: fixed !important;
-                top: 60px !important;
+                top: 55px !important;
                 left: 10px !important;
                 right: 10px !important;
                 background: var(--surface-color) !important;
@@ -367,26 +403,13 @@
                 z-index: 1001 !important;
                 padding: 15px !important;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
-                max-height: 70vh !important;
+                max-height: 60vh !important;
                 overflow-y: auto !important;
+                display: none;
             }
             
-            .mobile-inline-placar.show {
+            .mobile-placar-modal.show {
                 display: block !important;
-            }
-            
-            /* Botão para ver placar no topo */
-            .mobile-placar-toggle-btn {
-                display: block !important;
-                background: rgba(187, 134, 252, 0.15) !important;
-                border: 1px solid var(--accent-color) !important;
-                color: var(--accent-color) !important;
-                padding: 6px 12px !important;
-                border-radius: 20px !important;
-                font-size: 0.75rem !important;
-                font-weight: bold !important;
-                text-transform: uppercase !important;
-                margin: 0 !important;
             }
             
             .scoreboard-title {
@@ -396,53 +419,42 @@
             
             .score-entry {
                 min-width: 100px;
-                padding: 6px;
-                font-size: 0.75rem;
+                padding: 8px;
+                font-size: 0.8rem;
             }
             
             .score-name {
-                max-width: 70px;
+                max-width: 80px;
             }
             
-            /* Botão de comprar fileira otimizado */
-            #buy-row-container {
-                position: fixed !important;
-                bottom: 165px !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                z-index: 99 !important;
-                margin: 0 !important;
-            }
-            
-            #buy-row-btn {
-                padding: 14px 32px !important;
-                font-size: 1rem !important;
-                font-weight: bold !important;
-                box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4) !important;
-            }
-            
+            /* === BOARD - Cartas da mesa === */
             .board {
                 padding: 6px;
                 width: 100%;
                 overflow-x: auto;
                 overflow-y: visible;
                 max-height: none;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
             
             .row {
                 width: calc((6 * var(--card-w)) + (5 * var(--row-gap)) + (2 * var(--row-padding)));
                 min-width: fit-content;
                 max-width: 100%;
+                height: var(--row-h);
             }
             
             .row-wrapper {
                 gap: 6px;
-                margin-bottom: 5px;
+                margin-bottom: 6px;
             }
             
             .radio-label {
-                width: 20px;
-                height: 20px;
+                width: 22px;
+                height: 22px;
                 border-width: 2px;
             }
             
@@ -450,6 +462,10 @@
                 font-size: 0.8rem;
                 padding: 6px;
                 min-height: 32px;
+            }
+            
+            header {
+                padding: 8px 10px !important;
             }
             
             header h1 {
@@ -460,8 +476,13 @@
                 font-size: 0.65rem;
             }
             
+            .card {
+                width: var(--card-w);
+                height: var(--card-h);
+            }
+            
             .card-number {
-                font-size: 0.95rem;
+                font-size: 1rem;
             }
             
             .card-dots {
@@ -469,8 +490,8 @@
                 line-height: 4px;
             }
             
-            /* Área do jogador como footer fixo - apenas quando o jogo está ativo */
-            #game-screen.show .player-area {
+            /* === PLAYER AREA - Footer fixo === */
+            .player-area {
                 position: fixed !important;
                 bottom: 0 !important;
                 left: 0 !important;
@@ -478,40 +499,27 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 12px 8px 8px 8px !important;
+                padding: 10px 8px 12px 8px !important;
                 background-color: var(--surface-color) !important;
                 border-radius: 16px 16px 0 0 !important;
                 box-shadow: 0 -4px 20px rgba(0,0,0,0.6) !important;
                 z-index: 100 !important;
                 border: 1px solid rgba(255,255,255,0.1) !important;
                 border-bottom: none !important;
-                display: flex !important;
-            }
-            
-            /* Garantir que a player-area não apareça fora do game-screen */
-            .player-area {
-                display: none;
             }
             
             .player-area > div:first-child {
                 margin-bottom: 8px !important;
                 color: var(--text-secondary) !important;
-                font-size: 0.75rem !important;
+                font-size: 0.7rem !important;
                 text-align: center !important;
                 font-weight: 600 !important;
                 letter-spacing: 1px !important;
-            }
-            
-            .hand-container {
-                padding: 10px;
-            }
-            
-            .hand-title {
-                font-size: 0.7rem;
+                text-transform: uppercase !important;
             }
             
             .hand {
-                gap: 6px;
+                gap: 5px;
                 flex-wrap: wrap;
                 justify-content: center;
                 padding: 0 4px;
@@ -519,17 +527,34 @@
             
             .hand .card {
                 cursor: pointer;
-                width: 38px !important;
-                height: 56px !important;
+                width: 36px !important;
+                height: 54px !important;
             }
             
             .bots-action-area {
-                min-height: 24px;
+                min-height: 20px;
             }
             
             .bot-action-card {
                 font-size: 0.7rem;
                 padding: 3px 8px;
+            }
+            
+            /* Botão comprar fileira */
+            #buy-row-container {
+                position: fixed !important;
+                bottom: 145px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                z-index: 99 !important;
+                margin: 0 !important;
+            }
+            
+            #buy-row-btn {
+                padding: 12px 28px !important;
+                font-size: 0.9rem !important;
+                font-weight: bold !important;
+                box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4) !important;
             }
             
             .choose-row-btn {
@@ -540,6 +565,11 @@
             .timer-display {
                 font-size: 1rem;
             }
+        }
+        
+        /* Botão placar header - ocultar no desktop */
+        .mobile-placar-header-btn {
+            display: none;
         }
         
         /* --- Modo de Seleção de Fileira no Mobile --- */
@@ -641,16 +671,11 @@
         /* --- Responsividade Mobile Pequeno --- */
         @media (max-width: 480px) {
             :root {
-                --card-w: 34px;
-                --card-h: 50px;
+                --card-w: 32px;
+                --card-h: 48px;
                 --row-gap: 3px;
-                --row-h: 60px;
+                --row-h: 56px;
                 --row-padding: 3px;
-            }
-            
-            .hand .card {
-                width: 34px !important;
-                height: 50px !important;
             }
             
             .lobby-container {
@@ -672,17 +697,17 @@
             }
             
             .card-number {
-                font-size: 0.85rem;
+                font-size: 0.9rem;
             }
             
             .score-entry {
                 min-width: 80px;
-                padding: 5px;
-                font-size: 0.7rem;
+                padding: 6px;
+                font-size: 0.75rem;
             }
             
             .score-name {
-                max-width: 55px;
+                max-width: 60px;
             }
             
             .radio-label {
@@ -702,6 +727,24 @@
             
             #status-bar {
                 font-size: 0.75rem;
+            }
+            
+            .hand .card {
+                width: 32px !important;
+                height: 48px !important;
+            }
+            
+            .game-area {
+                padding-bottom: 130px;
+            }
+            
+            #buy-row-container {
+                bottom: 135px !important;
+            }
+            
+            .mobile-placar-header-btn {
+                padding: 5px 10px;
+                font-size: 0.7rem;
             }
         }
 
@@ -741,46 +784,150 @@
         }
 
         header { text-align: center; width: 100%; padding-top: 10px; flex-shrink: 0;}
-        header h1 { margin: 0; font-weight: 300; letter-spacing: 4px; color: var(--text-primary); }
-        .subtitle { font-size: 0.75rem; color: var(--accent-color); letter-spacing: 2px; margin-top: 4px; opacity: 0.8; }
+        h1 { margin: 0; font-weight: 300; letter-spacing: 2px; font-size: 1.4rem; color: var(--text-secondary); text-transform: uppercase; }
+        .subtitle { font-size: 0.75rem; color: var(--accent-color); opacity: 0.8; letter-spacing: 1px; }
 
         #status-bar {
-            background-color: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
+            background-color: var(--surface-color);
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
+            font-weight: 400;
             font-size: 0.9rem;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,255,255,0.05);
             color: var(--text-secondary);
-            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            min-height: 36px;
+            display: flex; align-items: center; justify-content: center;
         }
-        .status-action { color: var(--accent-color); background-color: rgba(187, 134, 252, 0.1); border-color: var(--accent-color); }
-        .status-error { color: var(--danger-color); background-color: rgba(207, 102, 121, 0.1); border-color: var(--danger-color); }
+        .status-action { border-color: var(--accent-color) !important; color: var(--accent-color) !important; }
+        .status-error { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-        .scoreboard-title {
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: var(--accent-color);
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .score-entry {
+        .scoreboard-header {
             display: flex;
             justify-content: space-between;
-            padding: 8px 10px;
-            background-color: rgba(255,255,255,0.03);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            border-left: 2px solid transparent;
-            transition: all 0.3s;
+            align-items: center;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
         }
-        .score-entry.leader { border-left: 2px solid var(--accent-color); background-color: rgba(187, 134, 252, 0.05); }
+        
+        .scoreboard-title { 
+            font-size: 1rem; 
+            font-weight: 600; 
+            color: var(--text-primary); 
+        }
+        
+        .toggle-placar-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+        }
+        
+        .round-info {
+            margin-top: auto;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            min-width: 60px;
+        }
+        
+        /* Botão flutuante para mobile */
+        .mobile-placar-btn {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4);
+            z-index: 1000;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .mobile-placar-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(187, 134, 252, 0.6);
+        }
+        
+        /* Modal do placar para mobile */
+        .mobile-placar-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .mobile-placar-modal.show {
+            display: flex;
+        }
+        
+        .mobile-placar-content {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 20px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .mobile-placar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        
+        .mobile-placar-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        
+        .mobile-placar-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .mobile-round-info {
+            margin-top: 15px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .score-entry {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;
+            font-size: 0.85rem; transition: transform 0.2s;
+        }
+        .score-entry.leader { border-left: 2px solid var(--accent-color); background: linear-gradient(90deg, rgba(187,134,252,0.1) 0%, transparent 100%); }
         .score-entry.danger { border-left: 2px solid var(--danger-color); }
         .score-entry.human { border: 1px solid rgba(255,255,255,0.2); }
         .score-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; }
@@ -1069,7 +1216,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <h1>Peguin 6</h1>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="mobile-placar-toggle-btn" id="mobile-placar-btn" style="display: none;" onclick="toggleMobileScoreboard()">Placar</button>
+                    <button class="mobile-placar-header-btn" id="mobile-placar-header-btn" onclick="toggleMobilePlacar()">Placar</button>
                     <button class="btn" style="padding: 8px 12px; font-size: 0.8rem; margin: 0;" onclick="showGameMenu()">Menu</button>
                 </div>
             </div>
@@ -1121,482 +1268,1683 @@
                     <div class="hand" id="player-hand"></div>
                 </div>
                 
-                <!-- Placar retrátil para mobile -->
-                <div class="mobile-inline-placar" id="mobile-inline-placar">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <div style="font-size: 1.1rem; font-weight: bold; color: var(--accent-color);">PLACAR</div>
-                        <button class="btn" style="margin: 0; padding: 5px 15px; font-size: 0.7rem;" onclick="toggleMobileScoreboard()">Fechar</button>
-                    </div>
-                    <div id="mobile-inline-scoreboard-list"></div>
-                    <div style="margin-top: 15px; text-align: center; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                        Rodada: <span id="mobile-inline-round-num">1</span>
+                <!-- Placar inline para mobile (abaixo da mão) -->
+                <div class="mobile-inline-placar" id="mobile-inline-placar" style="display: none;">
+                    <div style="margin: 20px 0 10px; padding: 10px; background: var(--sidebar-color); border-radius: 8px;">
+                        <div style="font-size: 1rem; font-weight: bold; color: var(--accent-color); text-align: center; margin-bottom: 10px;">PLACAR</div>
+                        <div id="mobile-inline-scoreboard-list"></div>
+                        <div style="margin-top: 10px; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">Rodada: <span id="mobile-inline-round-num">1</span></div>
                     </div>
                 </div>
             </div>
 
-            <div class="sidebar">
-                <div class="scoreboard-title">Placar</div>
-                <div id="scoreboard-list"></div>
-                <div style="margin-top: auto; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
-                    Rodada: <span id="round-num">1</span>
+            <aside class="sidebar" id="sidebar">
+                <div class="scoreboard-header">
+                    <div class="scoreboard-title">PLACAR</div>
+                    <button class="toggle-placar-btn" id="toggle-placar-btn" onclick="togglePlacar()">
+                        <span id="toggle-placar-icon">▼</span>
+                    </button>
+                </div>
+                <div id="scoreboard-content">
+                    <div id="scoreboard-list"></div>
+                </div>
+                <div class="round-info">
+                    R <span id="round-num">1</span>
+                </div>
+            </aside>
+            
+            <!-- Botão flutuante para mobile -->
+            <button class="mobile-placar-btn" id="mobile-placar-btn" onclick="toggleMobilePlacar()">
+                🏆 PLACAR
+            </button>
+            
+            <!-- Modal do placar para mobile -->
+            <div class="mobile-placar-modal" id="mobile-placar-modal">
+                <div class="mobile-placar-content">
+                    <div class="mobile-placar-header">
+                        <span>PLACAR</span>
+                        <button class="mobile-placar-close" onclick="toggleMobilePlacar()">✕</button>
+                    </div>
+                    <div id="mobile-scoreboard-list"></div>
+                    <div class="mobile-round-info">Rodada: <span id="mobile-round-num">1</span></div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- End Game Overlay -->
-    <div id="overlay">
-        <div class="modal-content">
-            <h2 id="end-winner"></h2>
-            <div id="end-ranking" style="margin: 20px 0; text-align: left;"></div>
-            <button onclick="playAgain()">Jogar Novamente</button>
+    <div id="overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 id="end-title" style="font-size: 2rem; margin-bottom: 10px; color: var(--accent-color);">Fim de Jogo!</h2>
+            <div id="end-winner" style="font-size: 1.3rem; margin-bottom: 20px; font-weight: bold;"></div>
+            <div id="end-ranking" style="margin-top: 20px; line-height: 2; text-align: left; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px;"></div>
+            <button class="btn btn-primary" onclick="playAgain()" style="padding: 12px 40px; font-size: 1rem; margin-top: 20px;">JOGAR NOVAMENTE</button>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        let playerId = localStorage.getItem('peguin6_player_id') || 'p_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('peguin6_player_id', playerId);
+<script>
+    // --- Configurações ---
+    const TOTAL_CARDS = 104;
+    const ROW_COUNT = 4;
+    const MAX_ROW_LENGTH = 5;
+    const SCORE_LIMIT = 66;
+    // Detecta automaticamente a URL do WebSocket
+    function getWebSocketURL() {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
         
-        let playerName = "";
-        let roomCode = "";
-        let isHost = false;
-        let players = [];
-        let boardRows = [[], [], [], []];
-        let gameState = "LOBBY";
-        let myPlayerIndex = -1;
-        let currentTurn = 1;
-        let selectedRowIndex = null;
-        let pendingPlayerCard = null;
-        let chooseRowTimer = null;
+        // Se for localhost, usa localhost:3000
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'ws://localhost:3000/ws';
+        }
         
-        const ROW_COUNT = 4;
-        const MAX_ROW_LENGTH = 5;
-        const SCORE_LIMIT = 66;
+        // Caso contrário, usa a mesma URL do navegador
+        return `${protocol}//${hostname}${port && port !== '80' && port !== '443' ? ':' + port : ''}/ws`;
+    }
+    
+    const WS_URL = getWebSocketURL();
 
-        // --- Socket Events ---
-        socket.on('connect', () => {
+    // --- Estado Global ---
+    let ws = null;
+    let playerId = null;
+    let playerName = '';
+    let roomId = null;
+    let isHost = false;
+    let players = [];
+    let deck = [];
+    let boardRows = [[], [], [], []];
+    let currentTurn = 1;
+    let gameState = "LOBBY";
+    let roundSelections = [];
+    let pendingPlayerCard = null;
+    let myPlayerIndex = -1;
+    let selectedRowIndex = null; // Índice da fileira selecionada para compra
+    let chooseRowTimer = null; // Timer para escolha de fileira
+    let chooseRowTimeLeft = 30; // Segundos restantes para escolher
+
+    // --- WebSocket Connection ---
+    function connectWebSocket() {
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
             console.log('Conectado ao servidor');
-            // Se houver código na URL, tentar entrar automaticamente
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('room');
-            if (code) {
-                document.getElementById('room-code').value = code;
-                showJoinForm();
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+        };
+
+        ws.onerror = (error) => {
+            showError('Erro de conexão. Certifique-se de que o servidor está rodando.');
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('Desconectado do servidor');
+            setTimeout(() => {
+                if (gameState !== 'END') {
+                    showError('Conexão perdida. Tentando reconectar...');
+                    connectWebSocket();
+                }
+            }, 3000);
+        };
+    }
+
+    function handleWebSocketMessage(data) {
+        switch (data.type) {
+            case 'ROOM_CREATED':
+                roomId = data.payload.roomId;
+                playerId = data.payload.playerId;
+                isHost = true;
+                // Adicionar o host à lista de players
+                players = [{
+                    id: playerId,
+                    name: data.payload.playerName,
+                    isBot: false,
+                    hand: [],
+                    score: 0,
+                    lastPlayed: null
+                }];
+                updatePlayersList([{ id: playerId, name: data.payload.playerName }]);
+                showRoomInfo();
+                break;
+
+            case 'JOIN_CONFIRMED':
+                // Convidado recebe seu playerId do servidor
+                playerId = data.payload.playerId;
+                roomId = data.payload.roomId;
+                console.log('JOIN_CONFIRMED - playerId:', playerId, 'roomId:', roomId);
+                showRoomInfo();
+                break;
+
+            case 'PLAYER_JOINED':
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
+
+            case 'PLAYER_LEFT':
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
+
+            case 'GAME_STARTED':
+                // Usar as informações de bot enviadas pelo servidor
+                players = data.payload.players.map((p, idx) => {
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        isBot: p.isBot || false,
+                        hand: [],
+                        score: 0,
+                        lastPlayed: null
+                    };
+                });
+                myPlayerIndex = players.findIndex(p => p.id === playerId);
+                console.log('GAME_STARTED - myPlayerIndex:', myPlayerIndex, 'playerId:', playerId, 'players:', players);
+                startNewRound();
+                break;
+
+            case 'GAME_UPDATE':
+                handleGameUpdate(data.payload);
+                break;
+
+            case 'GAME_STATE_UPDATE':
+                syncGameState(data.payload.gameState);
+                break;
+
+            case 'ERROR':
+                showError(data.payload.message);
+                break;
+                
+            case 'BOTS_UPDATED':
+                console.log('BOTS_UPDATED - received new players list:', data.payload.players.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+                updatePlayersList(data.payload.players);
+                if (isHost) {
+                    document.getElementById('start-game-btn').disabled = data.payload.players.length < 2;
+                }
+                break;
+        }
+    }
+
+    // --- Lobby Functions ---
+    function createRoom() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) {
+            showError('Por favor, digite seu nome');
+            return;
+        }
+        playerName = name;
+        connectWebSocket();
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                type: 'CREATE_ROOM',
+                payload: { playerName: name }
+            }));
+        };
+    }
+
+    function showJoinForm() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) {
+            showError('Por favor, digite seu nome primeiro');
+            return;
+        }
+        playerName = name;
+        document.getElementById('join-form').style.display = 'block';
+    }
+
+    function hideJoinForm() {
+        document.getElementById('join-form').style.display = 'none';
+        document.getElementById('room-code').value = '';
+    }
+    
+    function joinRoom() {
+        const code = document.getElementById('room-code').value.trim().toUpperCase();
+        if (!code) {
+            showError('Por favor, digite o código da sala');
+            return;
+        }
+        connectWebSocket();
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                type: 'JOIN_ROOM',
+                payload: { roomId: code, playerName: playerName }
+            }));
+        };
+    }
+
+    function showRoomInfo() {
+        document.getElementById('lobby-form').style.display = 'none';
+        document.getElementById('room-info').classList.add('show');
+        document.getElementById('room-code-text').textContent = roomId;
+        const fullLink = window.location.href.split('?')[0] + '?room=' + roomId;
+        document.getElementById('room-link-input').value = fullLink;
+    }
+
+    function updatePlayersList(playersList) {
+        console.log('updatePlayersList - received:', playersList.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+        
+        // Atualizar a variável players global preservando dados locais
+        const newPlayers = playersList.map(p => {
+            // Verificar se já existe esse jogador localmente
+            const existing = players.find(ep => ep.id === p.id);
+            return {
+                id: p.id,
+                name: p.name,
+                isBot: p.isBot || false,
+                hand: existing?.hand || p.hand || [],
+                score: existing?.score || p.score || 0,
+                lastPlayed: existing?.lastPlayed || p.lastPlayed || null
+            };
+        });
+        players = newPlayers;
+        
+        const container = document.getElementById('players-list-content');
+        container.innerHTML = '';
+        playersList.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'player-item';
+            if (p.id === playerId && isHost) div.classList.add('host');
+            div.textContent = p.name + (p.isBot ? ' 🤖' : '');
+            container.appendChild(div);
+        });
+        
+        // Atualizar contador de bots
+        const botCount = playersList.filter(p => p.isBot).length;
+        const humanCount = playersList.length - botCount;
+        const botCountEl = document.getElementById('bot-count');
+        if (botCountEl) {
+            botCountEl.textContent = `${humanCount} jogador(es) • ${botCount} bot(s)`;
+        }
+        
+        // Desabilitar botões se necessário
+        const addBotBtn = document.getElementById('add-bot-btn');
+        const removeBotBtn = document.getElementById('remove-bot-btn');
+        if (addBotBtn) addBotBtn.disabled = playersList.length >= 10;
+        if (removeBotBtn) removeBotBtn.disabled = botCount === 0;
+    }
+
+    function copyLink() {
+        const input = document.getElementById('room-link-input');
+        input.select();
+        document.execCommand('copy');
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }
+    
+    function copyRoomCode() {
+        const code = roomId;
+        if (!code) return;
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(code).then(() => {
+                const display = document.getElementById('room-code-display');
+                const originalHTML = display.innerHTML;
+                display.innerHTML = '<span style="color: var(--accent-color);">Copiado!</span>';
+                setTimeout(() => {
+                    display.innerHTML = originalHTML;
+                }, 2000);
+            });
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+    }
+
+    function startGame() {
+        if (!isHost) return;
+        if (players.length < 2) {
+            showError('Precisa de pelo menos 2 jogadores');
+            return;
+        }
+        ws.send(JSON.stringify({
+            type: 'START_GAME',
+            payload: {
+                players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
             }
-        });
-
-        socket.on('room_created', (data) => {
-            roomCode = data.roomCode;
-            isHost = true;
-            showRoomInfo();
-        });
-
-        socket.on('room_joined', (data) => {
-            roomCode = data.roomCode;
-            isHost = data.isHost;
-            showRoomInfo();
-        });
-
-        socket.on('room_update', (data) => {
-            players = data.players;
-            myPlayerIndex = players.findIndex(p => p.id === playerId);
-            updatePlayersList();
-            
-            const startBtn = document.getElementById('start-game-btn');
-            if (startBtn) {
-                startBtn.disabled = !isHost || players.length < 2;
+        }));
+    }
+    
+    function addBotToRoom() {
+        if (!isHost) return;
+        if (players.length >= 10) {
+            showError('Máximo de 10 jogadores');
+            return;
+        }
+        
+        const botId = 'bot-' + Math.random().toString(36).substr(2, 9);
+        const botName = 'Bot ' + (players.length);
+        
+        const newBot = {
+            id: botId,
+            name: botName,
+            isBot: true,
+            hand: [],
+            score: 0,
+            lastPlayed: null
+        };
+        players.push(newBot);
+        updatePlayersList(players);
+        
+        // Sincronizar com outros jogadores
+        ws.send(JSON.stringify({
+            type: 'UPDATE_BOTS',
+            payload: {
+                players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
             }
-        });
+        }));
+        
+        // Habilitar botao de iniciar se tiver 2+ jogadores
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn && players.length >= 2) {
+            startBtn.disabled = false;
+        }
+    }
 
-        socket.on('game_start', (data) => {
-            gameState = "SELECT";
-            boardRows = data.boardRows;
-            players = data.players;
-            currentTurn = data.currentTurn;
-            myPlayerIndex = players.findIndex(p => p.id === playerId);
+    function removeBotFromRoom() {
+        if (!isHost) return;
+        let botIndex = -1;
+        for (let i = players.length - 1; i >= 0; i--) {
+            if (players[i].isBot) {
+                botIndex = i;
+                break;
+            }
+        }
+        
+        if (botIndex !== -1) {
+            players.splice(botIndex, 1);
+            updatePlayersList(players);
             
-            document.getElementById('lobby-screen').style.display = 'none';
-            document.getElementById('game-screen').classList.add('show');
-            
-            setStatus("Sua vez! Escolha uma carta.");
+            // Sincronizar com outros jogadores
+            ws.send(JSON.stringify({
+                type: 'UPDATE_BOTS',
+                payload: {
+                    players: players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }))
+                }
+            }));
+        }
+        
+        // Desabilitar botao de iniciar se tiver menos de 2 jogadores
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn && players.length < 2) {
+            startBtn.disabled = true;
+        }
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('error-message');
+        errorDiv.textContent = message;
+        errorDiv.classList.add('show');
+        setTimeout(() => {
+            errorDiv.classList.remove('show');
+        }, 5000);
+    }
+
+    // --- Game Functions ---
+    function calculateTdB(num) {
+        let tdb = 1;
+        if (num % 10 === 0) tdb = 3;
+        else if (num % 5 === 0) tdb = 2;
+        if (num > 10 && num < 100 && Math.floor(num/10) === (num%10)) tdb += 5;
+        return tdb;
+    }
+
+    function startNewRound() {
+        console.log('startNewRound - isHost:', isHost, 'myPlayerIndex:', myPlayerIndex, 'players:', players.length);
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('game-screen').classList.add('show');
+
+        deck = [];
+        for (let i = 1; i <= TOTAL_CARDS; i++) deck.push({ number: i, tdb: calculateTdB(i) });
+        
+        // Shuffle
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        // Deal cards (only host generates and distributes)
+        if (isHost) {
+            const hands = [];
+            for (let p = 0; p < players.length; p++) {
+                hands[p] = [];
+                for (let k = 0; k < 10; k++) hands[p].push(deck.pop());
+                hands[p].sort((a,b) => a.number - b.number);
+            }
+
+            const initialRows = [];
+            for (let i = 0; i < ROW_COUNT; i++) initialRows[i] = [deck.pop()];
+
+            // Send game state to all players
+            const gameState = {
+                hands: hands,
+                boardRows: initialRows,
+                currentTurn: 1
+            };
+
+            ws.send(JSON.stringify({
+                type: 'GAME_STATE_SYNC',
+                payload: { gameState }
+            }));
+
+            // Apply locally
+            console.log('Host applying hands locally, players:', players.length, 'hands:', hands.length);
+            players.forEach((p, idx) => {
+                p.hand = hands[idx];
+                p.lastPlayed = null;
+                console.log('Player', idx, p.name, 'hand:', p.hand.length, 'cards');
+            });
+            boardRows = initialRows;
+            console.log('Host myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
+        }
+
+        currentTurn = 1;
+        gameState = "SELECT";
+        updateUI();
+        setStatus("Sua vez - escolha uma carta", "action");
+        
+        // IMPORTANTE: Fazer bots jogarem automaticamente no início da rodada
+        if (isHost) {
+            setTimeout(() => triggerBotPlays(), 1000);
+        }
+    }
+
+    // IA para bots - escolhe uma carta estrategica
+    function chooseBotCard(botHand, boardRows) {
+        if (!botHand || botHand.length === 0) return null;
+        const sortedHand = [...botHand].sort((a, b) => a.number - b.number);
+        for (let card of sortedHand) {
+            let bestRow = -1;
+            let bestLastCard = -1;
+            for (let i = 0; i < boardRows.length; i++) {
+                const row = boardRows[i];
+                if (row.length === 0) continue;
+                const lastCard = row[row.length - 1].number;
+                if (lastCard < card.number && lastCard > bestLastCard) {
+                    bestRow = i;
+                    bestLastCard = lastCard;
+                }
+            }
+            if (bestRow !== -1 && boardRows[bestRow].length < 5) {
+                return card;
+            }
+        }
+        return sortedHand[0];
+    }
+    
+    function makeBotPlay(botIndex) {
+        const bot = players[botIndex];
+        
+        // Validações de segurança
+        if (!bot) {
+            console.log('makeBotPlay - bot not found at index', botIndex);
+            return;
+        }
+        
+        if (!bot.isBot) {
+            console.log('makeBotPlay - player is not a bot:', bot.name);
+            return;
+        }
+        
+        if (bot.lastPlayed) {
+            console.log('makeBotPlay - bot already played:', bot.name, bot.lastPlayed.number);
+            return;
+        }
+        
+        if (!bot.hand || bot.hand.length === 0) {
+            console.log('makeBotPlay - bot has no cards:', bot.name);
+            return;
+        }
+        
+        const chosenCard = chooseBotCard(bot.hand, boardRows);
+        if (!chosenCard) {
+            console.log('makeBotPlay - no card chosen for bot', bot.name, '- hand:', bot.hand);
+            // Se não conseguiu escolher, pegar a primeira carta
+            if (bot.hand.length > 0) {
+                const fallbackCard = bot.hand[0];
+                console.log('makeBotPlay - using fallback card:', fallbackCard.number);
+                executeBotPlay(bot, fallbackCard, 0);
+            }
+            return;
+        }
+        
+        console.log('makeBotPlay - bot', bot.name, 'playing card', chosenCard.number);
+        
+        const cardIndex = bot.hand.findIndex(c => c.number === chosenCard.number);
+        executeBotPlay(bot, chosenCard, cardIndex);
+    }
+    
+    function executeBotPlay(bot, card, cardIndex) {
+        console.log('executeBotPlay - START - bot:', bot.name, 'card:', card.number, 'cardIndex:', cardIndex);
+        
+        // Verificar se WebSocket está conectado
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            console.error('executeBotPlay - WebSocket not connected! readyState:', ws?.readyState);
+            // Se não estiver conectado, processar localmente apenas
+            if (cardIndex !== -1 && cardIndex < bot.hand.length) {
+                bot.hand.splice(cardIndex, 1);
+            }
+            bot.lastPlayed = card;
             updateUI();
-        });
-
-        socket.on('game_update', (data) => {
-            gameState = data.gameState;
-            boardRows = data.boardRows;
-            players = data.players;
-            currentTurn = data.currentTurn;
-            myPlayerIndex = players.findIndex(p => p.id === playerId);
-            
-            updateUI();
-            
-            if (gameState === "SELECT") {
-                setStatus("Sua vez! Escolha uma carta.");
-            } else if (gameState === "WAITING") {
-                setStatus("Aguardando outros jogadores...");
+            if (isHost) {
+                setTimeout(() => checkAllPlayersPlayed(), 300);
             }
-        });
+            return;
+        }
+        
+        // Remover carta da mão do bot
+        if (cardIndex !== -1 && cardIndex < bot.hand.length) {
+            bot.hand.splice(cardIndex, 1);
+            console.log('executeBotPlay - removed card from hand, remaining:', bot.hand.length);
+        }
+        bot.lastPlayed = card;
+        console.log('executeBotPlay - set lastPlayed:', card.number);
+        
+        // Enviar jogada do bot para o servidor
+        try {
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'PLAY_CARD',
+                    cardIndex: cardIndex,
+                    card: card,
+                    fromPlayerId: bot.id
+                }
+            }));
+            console.log('executeBotPlay - sent PLAY_CARD to server');
+        } catch (error) {
+            console.error('executeBotPlay - error sending to server:', error);
+        }
+        
+        updateUI();
+        console.log('executeBotPlay - updated UI');
+        
+        // Verificar se todos jogaram
+        if (isHost) {
+            console.log('executeBotPlay - scheduling checkAllPlayersPlayed');
+            setTimeout(() => checkAllPlayersPlayed(), 300);
+        }
+        
+        console.log('executeBotPlay - END');
+    }
 
-        socket.on('choose_row', (data) => {
-            if (data.playerId === playerId) {
-                gameState = "CHOOSE_ROW";
-                pendingPlayerCard = data.card;
-                setStatus("Escolha uma fileira para pegar!", "action");
-                startChooseRowTimer(data.timeout || 30);
+    function syncGameState(state) {
+        if (!state) return;
+        
+        console.log('syncGameState - playerId:', playerId, 'players:', players.map(p => p.id));
+        
+        // Garantir que myPlayerIndex esteja definido
+        if (myPlayerIndex === -1) {
+            myPlayerIndex = players.findIndex(p => p.id === playerId);
+            console.log('syncGameState - calculated myPlayerIndex:', myPlayerIndex);
+        }
+        
+        // Aplicar as mãos para cada jogador
+        if (state.hands) {
+            console.log('syncGameState - received hands for', state.hands.length, 'players');
+            // Se a quantidade de mãos recebidas for diferente da quantidade de jogadores, 
+            // pode ser que a lista de jogadores esteja desatualizada
+            state.hands.forEach((hand, idx) => {
+                if (players[idx]) {
+                    players[idx].hand = hand;
+                    console.log('Player', idx, players[idx].name, 'received', hand.length, 'cards');
+                }
+            });
+        }
+        
+        if (state.boardRows) {
+            boardRows = state.boardRows;
+        }
+        
+        if (state.currentTurn) {
+            currentTurn = state.currentTurn;
+        }
+
+        console.log('syncGameState - myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
+        
+        gameState = "SELECT";
+        updateUI();
+        setStatus("Sua vez - escolha uma carta", "action");
+        
+        // Fazer bots jogarem automaticamente (apenas o host controla os bots)
+        if (isHost) {
+            setTimeout(() => triggerBotPlays(), 800);
+        }
+    }
+
+    function handleCardClick(cardIndex) {
+        if (gameState !== "SELECT") return;
+        if (myPlayerIndex === -1) return;
+
+        const player = players[myPlayerIndex];
+        if (!player || cardIndex >= player.hand.length) return;
+
+        const chosenCard = player.hand[cardIndex];
+        
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'PLAY_CARD',
+                cardIndex: cardIndex,
+                card: chosenCard
+            }
+        }));
+
+        // Optimistic update
+        player.hand.splice(cardIndex, 1);
+        player.lastPlayed = chosenCard;
+        gameState = "WAITING";
+        updateUI();
+        setStatus("Aguardando outros jogadores...");
+        
+        // Se sou o host, fazer bots jogarem e verificar se todos jogaram
+        if (isHost) {
+            console.log('handleCardClick - player played, triggering bots');
+            // Primeiro fazer os bots jogarem
+            setTimeout(() => triggerBotPlays(), 300);
+            // Depois verificar se todos jogaram
+            setTimeout(() => checkAllPlayersPlayed(), 1000);
+        }
+    }
+
+    function handleGameUpdate(payload) {
+        if (payload.action === 'PLAY_CARD') {
+            const player = players.find(p => p.id === payload.fromPlayerId);
+            if (player && payload.card) {
+                const cardIndex = player.hand.findIndex(c => c.number === payload.card.number);
+                if (cardIndex !== -1) {
+                    player.hand.splice(cardIndex, 1);
+                }
+                player.lastPlayed = payload.card;
+                updateUI();
+                
+                // Verificar se todos jogaram (apenas o host processa)
+                if (isHost) {
+                    checkAllPlayersPlayed();
+                }
+            }
+        } else if (payload.action === 'CARD_PLACED') {
+            // Handle card placement
+            if (payload.rowIndex !== undefined && payload.card) {
+                if (payload.isSixthCard) {
+                    // Row was taken
+                    boardRows[payload.rowIndex] = [payload.card];
+                    if (payload.points !== undefined) {
+                        const player = players.find(p => p.id === payload.playerId);
+                        if (player) player.score += payload.points;
+                    }
+                } else {
+                    boardRows[payload.rowIndex].push(payload.card);
+                }
                 updateUI();
             }
-        });
-
-        socket.on('game_over', (data) => {
-            gameState = "OVER";
-            showGameOverScreen(data.winner, data.ranking);
-        });
-
-        socket.on('error_msg', (msg) => {
-            showError(msg);
-        });
-
-        // --- Lobby Functions ---
-        function createRoom() {
-            playerName = document.getElementById('player-name').value.trim();
-            if (!playerName) {
-                showError("Por favor, digite seu nome.");
-                return;
-            }
-            socket.emit('create_room', { playerName, playerId });
-        }
-
-        function showJoinForm() {
-            document.getElementById('lobby-form').style.display = 'none';
-            document.getElementById('join-form').style.display = 'block';
-        }
-
-        function hideJoinForm() {
-            document.getElementById('lobby-form').style.display = 'block';
-            document.getElementById('join-form').style.display = 'none';
-        }
-
-        function joinRoom() {
-            playerName = document.getElementById('player-name').value.trim();
-            roomCode = document.getElementById('room-code').value.trim().toUpperCase();
-            
-            if (!playerName) {
-                showError("Por favor, digite seu nome.");
-                return;
-            }
-            if (!roomCode) {
-                showError("Por favor, digite o código da sala.");
-                return;
-            }
-            
-            socket.emit('join_room', { roomCode, playerName, playerId });
-        }
-
-        function addBotToRoom() {
-            if (!isHost) return;
-            socket.emit('add_bot', { roomCode });
-        }
-
-        function removeBotFromRoom() {
-            if (!isHost) return;
-            socket.emit('remove_bot', { roomCode });
-        }
-
-        function startGame() {
-            if (!isHost) return;
-            socket.emit('start_game', { roomCode });
-        }
-
-        function showRoomInfo() {
-            document.getElementById('lobby-form').style.display = 'none';
-            document.getElementById('join-form').style.display = 'none';
-            document.getElementById('room-info').classList.add('show');
-            document.getElementById('room-code-text').textContent = roomCode;
-            document.getElementById('room-link-input').value = window.location.origin + window.location.pathname + '?room=' + roomCode;
-        }
-
-        function updatePlayersList() {
-            const list = document.getElementById('players-list-content');
-            list.innerHTML = "";
-            players.forEach(p => {
-                const item = document.createElement('div');
-                item.className = 'player-item' + (p.isHost ? ' host' : '');
-                item.textContent = p.name + (p.isBot ? ' 🤖' : '');
-                list.appendChild(item);
-            });
-            
-            const botCount = players.filter(p => p.isBot).length;
-            document.getElementById('bot-count').textContent = botCount > 0 ? `${botCount} bot(s) na sala` : "";
-        }
-
-        function copyRoomCode() {
-            navigator.clipboard.writeText(roomCode);
-            alert("Código copiado!");
-        }
-
-        function copyLink() {
-            const input = document.getElementById('room-link-input');
-            input.select();
-            document.execCommand('copy');
-            alert("Link copiado!");
-        }
-
-        function showError(msg) {
-            const err = document.getElementById('error-message');
-            err.textContent = msg;
-            err.classList.add('show');
-            setTimeout(() => err.classList.remove('show'), 3000);
-        }
-
-        // --- Game Functions ---
-        function handleCardClick(cardIdx) {
-            if (gameState !== "SELECT") return;
-            
-            const card = players[myPlayerIndex].hand[cardIdx];
-            socket.emit('play_card', { roomCode, playerId, cardIdx });
-            
-            gameState = "WAITING";
-            setStatus("Aguardando outros jogadores...");
-            updateUI();
-        }
-
-        function selectRow(rowIdx) {
-            if (gameState !== "CHOOSE_ROW") return;
-            selectedRowIndex = rowIdx;
-            updateUI();
-        }
-
-        function confirmRowPurchase() {
-            if (gameState !== "CHOOSE_ROW" || selectedRowIndex === null) return;
-            
-            stopChooseRowTimer();
-            socket.emit('row_selected', { roomCode, playerId, rowIndex: selectedRowIndex });
-            
-            gameState = "WAITING";
-            selectedRowIndex = null;
-            pendingPlayerCard = null;
-            updateUI();
-        }
-
-        function startChooseRowTimer(seconds) {
-            let timeLeft = seconds;
-            const timerEl = document.getElementById('choose-row-timer');
-            if (timerEl) timerEl.textContent = timeLeft;
-            
-            clearInterval(chooseRowTimer);
-            chooseRowTimer = setInterval(() => {
-                timeLeft--;
-                if (timerEl) timerEl.textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    stopChooseRowTimer();
+        } else if (payload.action === 'ROW_SELECTED') {
+            // Handle row selection for low card
+            if (payload.rowIndex !== undefined && payload.card) {
+                boardRows[payload.rowIndex] = [payload.card];
+                if (payload.points !== undefined) {
+                    const player = players.find(p => p.id === payload.playerId);
+                    if (player) player.score += payload.points;
                 }
-            }, 1000);
+                updateUI();
+                
+                // Se sou o host e outro jogador escolheu, continuar processando
+                if (isHost && payload.playerId !== playerId) {
+                    onRowSelectionComplete();
+                }
+            }
+        } else if (payload.action === 'CHOOSE_ROW_REQUEST') {
+            // Outro jogador precisa escolher uma fileira - verificar se sou eu
+            console.log('CHOOSE_ROW_REQUEST received - playerId:', payload.playerId, 'my playerId:', playerId);
+            if (payload.playerId === playerId) {
+                console.log('I need to choose a row!');
+                pendingPlayerCard = payload.card;
+                selectedRowIndex = null;
+                gameState = "CHOOSE_ROW";
+                setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                startChooseRowTimer(); // Iniciar timer de 30 segundos
+                updateUI();
+            }
+        } else if (payload.action === 'TURN_END') {
+            players.forEach(p => p.lastPlayed = null);
+            currentTurn++;
+            gameState = "SELECT";
+            updateUI();
+            setStatus("Sua vez - escolha uma carta", "action");
+            
+            // Fazer bots jogarem automaticamente (apenas o host controla os bots)
+            if (isHost) {
+                setTimeout(() => triggerBotPlays(), 800);
+            }
+        } else if (payload.action === 'RESTART_REQUEST') {
+            if (confirm(`O jogador ${payload.fromPlayerName} deseja reiniciar o jogo. Você aceita?`)) {
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'RESTART_CONFIRMED'
+                    }
+                }));
+            }
+        } else if (payload.action === 'GAME_RESTARTED') {
+            alert('O jogo foi reiniciado!');
+            // Resetar estado local e iniciar nova rodada
+            players.forEach(p => {
+                p.score = 0;
+                p.hand = [];
+                p.lastPlayed = null;
+            });
+            currentTurn = 1;
+            if (isHost) {
+                startNewRound();
+            }
+        } else if (payload.action === 'GAME_OVER') {
+            gameState = "END";
+            
+            // Exibir tela de fim de jogo para todos os jogadores
+            if (payload.ranking) {
+                const ranking = payload.ranking;
+                const winner = ranking[0]; // Primeiro do ranking (menos pontos)
+                showGameOverScreen(winner, ranking);
+            }
+            
+            setStatus(`Fim de jogo! ${payload.winner} venceu!`, "action");
+            updateUI();
         }
+    }
 
-        function stopChooseRowTimer() {
-            clearInterval(chooseRowTimer);
+    // Verificar se todos os jogadores jogaram suas cartas
+    let checkAllPlayersPlayedCalls = 0;
+    function checkAllPlayersPlayed() {
+        console.log('checkAllPlayersPlayed - START');
+        console.log('checkAllPlayersPlayed - total players:', players.length);
+        
+        // Proteção contra loops infinitos
+        checkAllPlayersPlayedCalls++;
+        if (checkAllPlayersPlayedCalls > 20) {
+            console.error('checkAllPlayersPlayed - too many calls, resetting');
+            checkAllPlayersPlayedCalls = 0;
+            return;
         }
-
-        // --- UI Helpers ---
-        function showGameMenu() {
-            const menu = document.getElementById('game-menu');
-            if (menu) {
-                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        
+        players.forEach((p, idx) => {
+            console.log(`checkAllPlayersPlayed - Player ${idx}: ${p.name}, isBot: ${p.isBot}, lastPlayed: ${p.lastPlayed?.number || 'null'}, handSize: ${p.hand?.length || 0}`);
+        });
+        
+        const allPlayed = players.every(p => p.lastPlayed !== null);
+        console.log('checkAllPlayersPlayed - allPlayed:', allPlayed);
+        
+        if (allPlayed) {
+            console.log('checkAllPlayersPlayed - all players played, processing round');
+            checkAllPlayersPlayedCalls = 0; // Reset counter
+            // Pequeno delay para garantir que a UI atualize
+            setTimeout(() => processRound(), 500);
+        } else {
+            console.log('checkAllPlayersPlayed - waiting for more players');
+            // Verificar se há bots que ainda não jogaram
+            const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed && p.hand && p.hand.length > 0);
+            console.log('checkAllPlayersPlayed - bots not played count:', botsNotPlayed.length);
+            
+            if (botsNotPlayed.length > 0 && isHost) {
+                console.log('checkAllPlayersPlayed - bots not played:', botsNotPlayed.map(b => b.name));
+                console.log('checkAllPlayersPlayed - triggering bot plays again in 800ms');
+                setTimeout(() => triggerBotPlays(), 800);
+            } else {
+                // Resetar contador se não há mais bots para jogar
+                checkAllPlayersPlayedCalls = 0;
+            }
+        }
+    }
+    
+    // Processar o turno - colocar cartas nas fileiras
+    let pendingRowSelections = 0; // Contador de jogadores que precisam escolher fileira
+    let cardsToProcess = []; // Cartas a processar
+    let currentCardIndex = 0; // Índice da carta atual sendo processada
+    
+    function processRound() {
+        console.log('processRound - processing cards');
+        
+        // Reset do contador de chamadas recursivas
+        checkAllPlayersPlayedCalls = 0;
+        
+        // Ordenar jogadores pela carta jogada (menor para maior)
+        cardsToProcess = players.map((p, idx) => ({
+            playerIndex: idx,
+            playerId: p.id,
+            card: p.lastPlayed
+        })).sort((a, b) => a.card.number - b.card.number);
+        
+        currentCardIndex = 0;
+        pendingRowSelections = 0;
+        
+        // Processar a primeira carta
+        processNextCard();
+    }
+    
+    function processNextCard() {
+        if (currentCardIndex >= cardsToProcess.length) {
+            // Todas as cartas foram processadas
+            // Só finalizar o turno se não houver seleções pendentes
+            if (pendingRowSelections === 0) {
+                setTimeout(() => finishTurn(), 500);
+            }
+            return;
+        }
+        
+        const play = cardsToProcess[currentCardIndex];
+        console.log('processNextCard - processing card', currentCardIndex, 'player:', play.playerIndex, 'card:', play.card.number);
+        
+        const needsRowSelection = placeCardOnBoard(play.playerIndex, play.card);
+        
+        if (needsRowSelection) {
+            // Jogador precisa escolher fileira - NÃO avançar para a próxima carta
+            // A próxima carta será processada quando o jogador escolher
+            pendingRowSelections++;
+            console.log('processNextCard - waiting for row selection, pendingRowSelections:', pendingRowSelections);
+        } else {
+            // Carta foi colocada normalmente - avançar para a próxima
+            currentCardIndex++;
+            setTimeout(() => processNextCard(), 600);
+        }
+    }
+    
+    // Função chamada quando um jogador termina de escolher a fileira
+    function onRowSelectionComplete() {
+        pendingRowSelections--;
+        currentCardIndex++;
+        console.log('onRowSelectionComplete - pendingRowSelections:', pendingRowSelections, 'currentCardIndex:', currentCardIndex);
+        
+        // Continuar processando as próximas cartas
+        setTimeout(() => processNextCard(), 600);
+    }
+    
+    // Colocar uma carta no tabuleiro
+    // Retorna true se o jogador precisa escolher uma fileira (humano), false caso contrário
+    function placeCardOnBoard(playerIndex, card) {
+        console.log('placeCardOnBoard - player:', playerIndex, 'card:', card.number);
+        
+        // Encontrar a fileira correta (maior carta menor que a jogada)
+        let bestRow = -1;
+        let bestLastCard = -1;
+        
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const row = boardRows[i];
+            const lastCard = row[row.length - 1].number;
+            
+            if (lastCard < card.number && lastCard > bestLastCard) {
+                bestRow = i;
+                bestLastCard = lastCard;
             }
         }
         
-        function toggleMobileScoreboard() {
-            const sb = document.getElementById('mobile-inline-placar');
-            if (sb) {
-                sb.classList.toggle('show');
-            }
-        }
-
-        function requestRestart() {
-            if (confirm('Deseja reiniciar o jogo?')) {
-                socket.emit('restart_game', { roomCode });
-                showGameMenu();
-            }
-        }
-
-        function surrenderGame() {
-            if (confirm('Deseja desistir do jogo?')) {
-                socket.emit('surrender', { roomCode, playerId });
-                showGameMenu();
-            }
-        }
-
-        function exitGame() {
-            window.location.href = window.location.origin + window.location.pathname;
-        }
-
-        function showGameOverScreen(winner, ranking) {
-            const winnerDiv = document.getElementById('end-winner');
-            winnerDiv.innerHTML = `🏆 ${winner.name}${winner.isBot ? ' 🤖' : ''} venceu!`;
+        if (bestRow === -1) {
+            // Carta é menor que todas as últimas - jogador deve escolher uma fileira
+            const currentPlayer = players[playerIndex];
             
-            const rankingDiv = document.getElementById('end-ranking');
-            let rankingHTML = '<div style="text-align: center; font-weight: bold; margin-bottom: 15px; color: var(--accent-color);">Ranking Final</div>';
-            ranking.forEach((p, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
-                rankingHTML += `<div style="display: flex; justify-content: space-between; padding: 8px; background: ${idx === 0 ? 'rgba(187, 134, 252, 0.1)' : 'transparent'}; border-radius: 4px; margin-bottom: 5px;">`;
-                rankingHTML += `<span>${medal} ${p.name}${p.isBot ? ' 🤖' : ''}</span>`;
-                rankingHTML += `<span style="font-weight: bold;">${p.score} pts</span>`;
-                rankingHTML += `</div>`;
-            });
-            rankingDiv.innerHTML = rankingHTML;
-            document.getElementById('overlay').style.display = 'flex';
-        }
-
-        function playAgain() {
-            location.reload();
-        }
-
-        function setStatus(msg, type = "normal") {
-            const el = document.getElementById("status-bar");
-            if (!el) return;
-            el.textContent = msg;
-            el.className = ""; 
-            if (type === "action") el.classList.add("status-action");
-            if (type === "error") el.classList.add("status-error");
-        }
-
-        function createCardElement(card, isClickable = false, index = -1) {
-            const el = document.createElement("div");
-            el.className = "card";
-            if (card.tdb < 2) el.classList.add("risk-low");
-            else if (card.tdb < 5) el.classList.add("risk-med");
-            else el.classList.add("risk-high");
-
-            el.innerHTML = `<div class="card-number">${card.number}</div><div class="card-dots">${"●".repeat(card.tdb)}</div>`;
-
-            if (isClickable) el.onclick = () => handleCardClick(index);
-            else if (index !== -1) el.classList.add("disabled");
-            
-            return el;
-        }
-
-        function updateUI() {
-            if (!document.getElementById('game-screen').classList.contains('show')) return;
-            
-            const chooseRowHeader = document.getElementById('choose-row-header');
-            const buyRowContainer = document.getElementById('buy-row-container');
-            const isChooseRowMode = (gameState === "CHOOSE_ROW" && pendingPlayerCard);
-            
-            if (isChooseRowMode) {
-                document.body.classList.add('choosing-row');
-                if (chooseRowHeader) chooseRowHeader.style.display = 'block';
-                if (buyRowContainer) buyRowContainer.style.display = 'block';
-            } else {
-                document.body.classList.remove('choosing-row');
-                if (chooseRowHeader) chooseRowHeader.style.display = 'none';
-                if (buyRowContainer) buyRowContainer.style.display = 'none';
-            }
-            
-            for (let i = 0; i < ROW_COUNT; i++) {
-                const rowDiv = document.getElementById(`row-${i}`);
-                const radio = document.getElementById(`radio-row-${i}`);
-                const radioLabel = document.getElementById(`radio-label-${i}`);
+            // Se for um BOT, escolher automaticamente
+            if (currentPlayer.isBot) {
+                console.log('placeCardOnBoard - BOT needs to choose row:', currentPlayer.name, 'card:', card.number);
+                let minPoints = Infinity;
+                let minRow = 0;
                 
-                if (!rowDiv) continue;
-                rowDiv.innerHTML = "";
-                const rowCards = boardRows[i] || [];
-                
-                if (isChooseRowMode) {
-                    rowDiv.className = "row selectable" + (selectedRowIndex === i ? " selected" : "");
-                    rowDiv.onclick = () => selectRow(i);
-                    if (radio) radio.style.display = 'block';
-                    if (radioLabel) radioLabel.style.display = 'flex';
-                } else {
-                    rowDiv.className = "row" + (rowCards.length === MAX_ROW_LENGTH ? " full-danger" : "");
-                    rowDiv.onclick = null;
-                    if (radio) radio.style.display = 'none';
-                    if (radioLabel) radioLabel.style.display = 'none';
-                }
-
-                for (let j = 0; j < 6; j++) {
-                    if (j < rowCards.length) {
-                        rowDiv.appendChild(createCardElement(rowCards[j]));
-                    } else if (j < 5) {
-                        const emptySlot = document.createElement("div");
-                        emptySlot.className = "slot empty";
-                        rowDiv.appendChild(emptySlot);
-                    } else {
-                        const sixthSlot = document.createElement("div");
-                        sixthSlot.className = "slot sixth";
-                        rowDiv.appendChild(sixthSlot);
+                for (let i = 0; i < ROW_COUNT; i++) {
+                    const points = boardRows[i].reduce((acc, c) => acc + c.tdb, 0);
+                    console.log('placeCardOnBoard - row', i, 'has', points, 'points');
+                    if (points < minPoints) {
+                        minPoints = points;
+                        minRow = i;
                     }
                 }
-            }
-
-            const handDiv = document.getElementById("player-hand");
-            if (handDiv && myPlayerIndex !== -1) {
-                handDiv.innerHTML = "";
-                const myHand = players[myPlayerIndex].hand || [];
-                myHand.forEach((card, idx) => {
-                    handDiv.appendChild(createCardElement(card, gameState === "SELECT", idx));
-                });
-            }
-
-            const sbList = document.getElementById("scoreboard-list");
-            if (sbList) {
-                sbList.innerHTML = "";
-                let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
-                sortedPlayers.forEach((p, idx) => {
-                    const entry = document.createElement("div");
-                    entry.className = "score-entry" + (idx === 0 ? " leader" : "") + (p.score >= SCORE_LIMIT ? " danger" : "") + (p.id === playerId ? " human" : "");
-                    entry.innerHTML = `<span class="score-name">${p.name}${p.isBot ? ' 🤖' : ''}</span><span class="score-val">${p.score}${p.score >= SCORE_LIMIT ? ' 💀' : ''}</span>`;
-                    sbList.appendChild(entry);
-                });
-            }
-            
-            // Atualizar placar mobile também
-            const mobileSbList = document.getElementById("mobile-inline-scoreboard-list");
-            const mobilePlacarBtn = document.getElementById("mobile-placar-btn");
-            
-            if (mobilePlacarBtn) {
-                mobilePlacarBtn.style.display = window.innerWidth <= 768 ? 'block' : 'none';
-            }
-
-            if (mobileSbList) {
-                mobileSbList.innerHTML = "";
-                let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
                 
-                sortedPlayers.forEach((p, idx) => {
-                    const entry = document.createElement("div");
-                    entry.className = "score-entry" + (idx === 0 ? " leader" : "") + (p.score >= SCORE_LIMIT ? " danger" : "") + (p.id === playerId ? " human" : "");
-                    entry.innerHTML = `<span class="score-name">${p.name}${p.isBot ? ' 🤖' : ''}</span><span class="score-val">${p.score}${p.score >= SCORE_LIMIT ? ' 💀' : ''}</span>`;
-                    mobileSbList.appendChild(entry);
-                });
+                console.log('placeCardOnBoard - bot chose row', minRow, 'with', minPoints, 'points');
+                
+                // Bot pega os pontos da fileira
+                players[playerIndex].score += minPoints;
+                boardRows[minRow] = [card];
+                
+                console.log('placeCardOnBoard - updated bot score to', players[playerIndex].score);
+                console.log('placeCardOnBoard - updated board row', minRow);
+                
+                // Broadcast para outros jogadores
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'CARD_PLACED',
+                            rowIndex: minRow,
+                            card: card,
+                            playerId: currentPlayer.id,
+                            isSixthCard: true,
+                            points: minPoints
+                        }
+                    }));
+                    console.log('placeCardOnBoard - sent CARD_PLACED to server');
+                } else {
+                    console.error('placeCardOnBoard - WebSocket not connected!');
+                }
+                
+                updateUI();
+                
+                // IMPORTANTE: Para bots, retornamos false para que processNextCard continue o processamento
+                console.log('placeCardOnBoard - bot finished choosing row, returning false');
+                return false;
+            } else {
+                // Para jogadores HUMANOS, enviar mensagem para que ELES escolham
+                console.log('placeCardOnBoard - human player needs to choose row, playerIndex:', playerIndex, 'myPlayerIndex:', myPlayerIndex);
+                
+                // Se for EU (o jogador local), mostrar a UI de escolha
+                if (playerIndex === myPlayerIndex) {
+                    console.log('placeCardOnBoard - I (human player) need to choose row');
+                    console.log('placeCardOnBoard - setting gameState to CHOOSE_ROW');
+                    pendingPlayerCard = card;
+                    selectedRowIndex = null;
+                    gameState = "CHOOSE_ROW";
+                    setStatus("Sua carta é menor que todas! Selecione uma fileira e clique em COMPRAR", "action");
+                    startChooseRowTimer(); // Iniciar timer de 30 segundos
+                    updateUI();
+                    console.log('placeCardOnBoard - UI updated, waiting for player selection');
+                    return true; // Precisa de seleção manual
+                } else {
+                    // Se for OUTRO jogador humano, enviar mensagem para ele escolher
+                    console.log('placeCardOnBoard - sending CHOOSE_ROW_REQUEST to player:', currentPlayer.id);
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'CHOOSE_ROW_REQUEST',
+                            playerId: currentPlayer.id,
+                            card: card,
+                            playerIndex: playerIndex
+                        }
+                    }));
+                    return true; // Aguardar resposta do jogador
+                }
             }
+        } else {
+            // Verificar se a fileira vai ficar com 6 cartas
+            if (boardRows[bestRow].length >= 5) {
+                // Jogador pega os pontos da fileira
+                const points = boardRows[bestRow].reduce((acc, c) => acc + c.tdb, 0);
+                players[playerIndex].score += points;
+                boardRows[bestRow] = [card];
+                
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'CARD_PLACED',
+                        rowIndex: bestRow,
+                        card: card,
+                        playerId: players[playerIndex].id,
+                        isSixthCard: true,
+                        points: points
+                    }
+                }));
+            } else {
+                // Adicionar carta à fileira normalmente
+                boardRows[bestRow].push(card);
+                
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'CARD_PLACED',
+                        rowIndex: bestRow,
+                        card: card,
+                        playerId: players[playerIndex].id,
+                        isSixthCard: false
+                    }
+                }));
+            }
+        }
+        
+        updateUI();
+        return false; // Carta colocada normalmente, não precisa de seleção
+    }
+    
+    // Finalizar o turno
+    function finishTurn() {
+        console.log('finishTurn - turn:', currentTurn);
+        
+        // Limpar cartas jogadas
+        players.forEach(p => p.lastPlayed = null);
+        currentTurn++;
+        
+        // Verificar se a mão acabou (todos os jogadores sem cartas)
+        const handEnded = players.every(p => p.hand.length === 0);
+        
+        // Verificar se alguem atingiu 66 pontos
+        const someoneReached66 = players.some(p => p.score >= 66);
+        
+        // O jogo só acaba quando a mão termina E alguem tem 66+ pontos
+        if (handEnded && someoneReached66) {
+            gameState = "END";
+            const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+            
+            // Criar ranking completo
+            const ranking = [...players].sort((a, b) => a.score - b.score);
+            
+            // Mostrar tela de fim de jogo
+            showGameOverScreen(winner, ranking);
+            
+            // Broadcast fim de jogo para todos
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'GAME_OVER',
+                    winner: winner.name,
+                    ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                }
+            }));
+        } else {
+            // Distribuir novas cartas se a mão acabou
+            if (handEnded && isHost) {
+                distributeNewCards();
+            }
+            
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+            
+            // Broadcast para outros jogadores
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'TURN_END'
+                }
+            }));
+            
+            // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
+            // Aguardar um pouco mais para garantir que o estado foi atualizado
+            if (isHost) {
+                setTimeout(() => triggerBotPlays(), 1000);
+            }
+        }
+        
+        updateUI();
+    }
+    
+    // Função para fazer todos os bots jogarem
+    function triggerBotPlays() {
+        if (!isHost) return; // Apenas o host controla os bots
+        
+        console.log('triggerBotPlays - checking bots, gameState:', gameState);
+        
+        // NÃO verificar gameState - bots devem jogar independentemente do estado
+        // Isso permite que bots joguem mesmo quando o jogador humano está em WAITING
+        
+        let delay = 500;
+        let botsToPlay = [];
+        
+        players.forEach((p, idx) => {
+            if (p.isBot && !p.lastPlayed && p.hand && p.hand.length > 0) {
+                botsToPlay.push({ player: p, index: idx });
+            }
+        });
+        
+        console.log('triggerBotPlays - bots to play:', botsToPlay.map(b => b.player.name));
+        
+        botsToPlay.forEach((bot, i) => {
+            const playDelay = delay + (i * 600);
+            console.log('triggerBotPlays - scheduling', bot.player.name, 'to play in', playDelay, 'ms');
+            setTimeout(() => {
+                // Verificar apenas se o bot ainda não jogou e tem cartas
+                if (!bot.player.lastPlayed && bot.player.hand && bot.player.hand.length > 0) {
+                    console.log('triggerBotPlays - executing play for', bot.player.name);
+                    makeBotPlay(bot.index);
+                } else {
+                    console.log('triggerBotPlays - skipping', bot.player.name, '- already played or no cards');
+                }
+            }, playDelay);
+        });
+    }
+    
+    // Distribuir novas cartas para jogadores que ficaram sem
+    function distributeNewCards() {
+        console.log('distributeNewCards - deck remaining:', deck.length);
+        
+        // Verificar se todos os jogadores esgotaram suas cartas
+        const allEmpty = players.every(p => p.hand.length === 0);
+        
+        if (!allEmpty || deck.length < players.length * 10 + 4) {
+            console.log('Not all players empty or not enough cards in deck');
+            return;
+        }
+        
+        console.log('Starting new round - all players had 0 cards');
+        
+        // Distribuir 10 cartas para cada jogador
+        players.forEach(p => {
+            p.hand = [];
+            for (let i = 0; i < 10; i++) {
+                if (deck.length > 0) {
+                    p.hand.push(deck.pop());
+                }
+            }
+            // Ordenar a mao
+            p.hand.sort((a, b) => a.number - b.number);
+        });
+        
+        // Resetar a mesa com 4 novas cartas (1 por fileira)
+        boardRows = [];
+        for (let i = 0; i < 4; i++) {
+            if (deck.length > 0) {
+                boardRows[i] = [deck.pop()];
+            } else {
+                boardRows[i] = [];
+            }
+        }
+        
+        console.log('New round started - cards distributed, deck remaining:', deck.length);
+        
+        // Enviar novo estado do jogo
+        const newGameState = {
+            hands: players.map(p => p.hand),
+            boardRows: boardRows,
+            currentTurn: currentTurn
+        };
+        
+        ws.send(JSON.stringify({
+            type: 'GAME_STATE_SYNC',
+            payload: { gameState: newGameState }
+        }));
+    }
 
-            // Atualizar número da rodada no mobile
-            const mobileInlineRoundNum = document.getElementById("mobile-inline-round-num");
-            if (mobileInlineRoundNum) {
-                mobileInlineRoundNum.textContent = currentTurn;
+    // Função para iniciar o timer de escolha de fileira
+    function startChooseRowTimer() {
+        // Limpar timer anterior se existir
+        if (chooseRowTimer) {
+            clearInterval(chooseRowTimer);
+        }
+        
+        chooseRowTimeLeft = 30;
+        updateTimerDisplay();
+        
+        chooseRowTimer = setInterval(() => {
+            chooseRowTimeLeft--;
+            updateTimerDisplay();
+            
+            if (chooseRowTimeLeft <= 0) {
+                // Tempo esgotado - comprar automaticamente a fileira com menos pontos
+                clearInterval(chooseRowTimer);
+                chooseRowTimer = null;
+                autoSelectBestRow();
             }
-            
-            const roundNum = document.getElementById("round-num");
-            if (roundNum) roundNum.textContent = currentTurn;
-            
-            updateBotsActionArea();
+        }, 1000);
+    }
+    
+    // Função para atualizar o display do timer
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('choose-row-timer');
+        if (timerEl) {
+            timerEl.textContent = chooseRowTimeLeft;
+            // Mudar cor quando ficar pouco tempo
+            if (chooseRowTimeLeft <= 10) {
+                timerEl.style.color = '#ff4444';
+                timerEl.style.animation = 'pulse 0.5s infinite';
+            } else {
+                timerEl.style.color = '#ff6b6b';
+                timerEl.style.animation = 'none';
+            }
+        }
+    }
+    
+    // Função para parar o timer
+    function stopChooseRowTimer() {
+        if (chooseRowTimer) {
+            clearInterval(chooseRowTimer);
+            chooseRowTimer = null;
+        }
+    }
+    
+    // Função para selecionar automaticamente a melhor fileira (menos pontos)
+    function autoSelectBestRow() {
+        console.log('autoSelectBestRow - tempo esgotado, selecionando automaticamente');
+        
+        if (gameState !== "CHOOSE_ROW" || !pendingPlayerCard) {
+            return;
+        }
+        
+        // Encontrar a fileira com menos pontos
+        let minPoints = Infinity;
+        let minRow = 0;
+        
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const points = boardRows[i].reduce((acc, c) => acc + c.tdb, 0);
+            if (points < minPoints) {
+                minPoints = points;
+                minRow = i;
+            }
+        }
+        
+        selectedRowIndex = minRow;
+        confirmRowPurchase();
+    }
+    
+    // Função para selecionar uma fileira (marca o radio button)
+    function selectRow(rowIdx) {
+        console.log('selectRow called - rowIdx:', rowIdx);
+        
+        if (gameState !== "CHOOSE_ROW") {
+            console.log('selectRow - ignoring, not in CHOOSE_ROW state');
+            return;
+        }
+        if (!pendingPlayerCard) {
+            console.log('selectRow - ignoring, no pending card');
+            return;
+        }
+        
+        selectedRowIndex = rowIdx;
+        console.log('selectRow - selected row:', selectedRowIndex);
+        
+        // Marcar o radio button correspondente
+        const radio = document.getElementById('radio-row-' + rowIdx);
+        if (radio) {
+            radio.checked = true;
+        }
+        
+        // Habilitar o botão de comprar
+        const buyBtn = document.getElementById('buy-row-btn');
+        if (buyBtn) {
+            buyBtn.disabled = false;
+        }
+        
+        updateUI();
+    }
+    
+    // Função para confirmar a compra da fileira selecionada
+    function confirmRowPurchase() {
+        console.log('confirmRowPurchase called - selectedRowIndex:', selectedRowIndex);
+        
+        // Parar o timer
+        stopChooseRowTimer();
+        
+        if (gameState !== "CHOOSE_ROW") {
+            console.log('confirmRowPurchase - ignoring, not in CHOOSE_ROW state');
+            return;
+        }
+        if (!pendingPlayerCard) {
+            console.log('confirmRowPurchase - ignoring, no pending card');
+            return;
+        }
+        if (selectedRowIndex === null) {
+            showError('Selecione uma fileira primeiro!');
+            return;
+        }
+        if (myPlayerIndex === -1) {
+            console.log('confirmRowPurchase - ignoring, myPlayerIndex not set');
+            return;
         }
 
-        function updateBotsActionArea() {
-            const area = document.getElementById("bots-action-area");
-            if (!area) return;
-            area.innerHTML = "";
+        console.log('confirmRowPurchase - processing row selection:', selectedRowIndex);
+        
+        const row = boardRows[selectedRowIndex];
+        const points = row.reduce((acc, c) => acc + c.tdb, 0);
+        
+        // Adicionar a carta a fileira e jogador pega os pontos
+        players[myPlayerIndex].score += points;
+        boardRows[selectedRowIndex] = [pendingPlayerCard];
+        
+        // Enviar para o servidor
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'ROW_SELECTED',
+                rowIndex: selectedRowIndex,
+                card: pendingPlayerCard,
+                points: points,
+                playerId: playerId
+            }
+        }));
+        
+        pendingPlayerCard = null;
+        selectedRowIndex = null;
+        gameState = "WAITING";
+        setStatus("Aguardando outros jogadores...");
+        
+        // Resetar radio buttons
+        for (let i = 0; i < 4; i++) {
+            const radio = document.getElementById('radio-row-' + i);
+            if (radio) radio.checked = false;
+        }
+        
+        updateUI();
+        
+        // Notificar que a seleção foi concluída para continuar processando as cartas
+        if (isHost) {
+            onRowSelectionComplete();
+        }
+    }
+    
+    // Função antiga handleRowClick - mantida para compatibilidade
+    function handleRowClick(rowIdx) {
+        selectRow(rowIdx);
+    }
+
+    // --- UI Helpers ---
+    function showGameMenu() {
+        const menu = document.getElementById('game-menu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    function requestRestart() {
+        if (confirm('Deseja reiniciar o jogo? Todos os jogadores precisam confirmar.')) {
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'RESTART_REQUEST'
+                }
+            }));
+            showGameMenu();
+        }
+    }
+
+    function surrenderGame() {
+        if (confirm('Deseja desistir do jogo?')) {
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'SURRENDER'
+                }
+            }));
+            setTimeout(() => exitGame(), 1000);
+        }
+    }
+        function exitGame() {
+        if (confirm("Deseja realmente sair e voltar para o menu principal?")) {
+            // Fechar conexão WebSocket
+            if (ws) ws.close();
+            
+            // Limpar URL (remover código da sala) e recarregar
+            window.location.href = window.location.origin + window.location.pathname;
+        }
+    }
+
+    function showGameOverScreen(winner, ranking) {
+        const winnerDiv = document.getElementById('end-winner');
+        winnerDiv.innerHTML = `🏆 ${winner.name}${winner.isBot ? ' 🤖' : ''} venceu!`;
+        
+        // Preencher o ranking
+        const rankingDiv = document.getElementById('end-ranking');
+        let rankingHTML = '<div style="text-align: center; font-weight: bold; margin-bottom: 15px; color: var(--accent-color);">Ranking Final</div>';
+        ranking.forEach((p, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
+            const botIcon = p.isBot ? ' 🤖' : '';
+            rankingHTML += `<div style="display: flex; justify-content: space-between; padding: 8px; background: ${idx === 0 ? 'rgba(187, 134, 252, 0.1)' : 'transparent'}; border-radius: 4px; margin-bottom: 5px;">`;
+            rankingHTML += `<span>${medal} ${p.name}${botIcon}</span>`;
+            rankingHTML += `<span style="font-weight: bold;">${p.score} pts</span>`;
+            rankingHTML += `</div>`;
+        });
+        rankingDiv.innerHTML = rankingHTML;
+        
+        // Mostrar o overlay
+        document.getElementById('overlay').style.display = 'flex';
+    }
+    
+    function playAgain() {
+        // Recarregar a página para começar um novo jogo
+        location.reload();
+    }
+
+    function setStatus(msg, type = "normal") {
+        const el = document.getElementById("status-bar");
+        if (!el) return;
+        el.textContent = msg;
+        el.className = ""; 
+        if (type === "action") el.classList.add("status-action");
+        if (type === "error") el.classList.add("status-error");
+        
+        const roundEl = document.getElementById("round-num");
+        if (roundEl) roundEl.textContent = currentTurn;
+    }
+
+    function createCardElement(card, isClickable = false, index = -1) {
+        const el = document.createElement("div");
+        el.className = "card";
+        if (card.tdb < 2) el.classList.add("risk-low");
+        else if (card.tdb < 5) el.classList.add("risk-med");
+        else el.classList.add("risk-high");
+
+        el.innerHTML = `<div class="card-number">${card.number}</div><div class="card-dots">${"●".repeat(card.tdb)}</div>`;
+
+        if (isClickable) el.onclick = () => handleCardClick(index);
+        else if (index !== -1) el.classList.add("disabled");
+        
+        return el;
+    }
+
+    function updateBotsActionArea() {
+        const area = document.getElementById("bots-action-area");
+        if (!area) return;
+        area.innerHTML = "";
+        
+        if (gameState === "WAITING" || gameState === "CHOOSE_ROW") {
             players.forEach(p => {
                 if (p.lastPlayed) {
                     const div = document.createElement("div");
                     div.className = "bot-action-card visible";
                     div.innerHTML = `${p.name}: <strong>${p.lastPlayed.number}</strong>`;
+                    if (p.id === playerId) div.style.border = "1px solid var(--accent-color)";
                     area.appendChild(div);
                 }
             });
         }
-    </script>
+    }
+
+    function updateUI() {
+        if (!document.getElementById('game-screen').classList.contains('show')) return;
+        
+        // Mostrar/ocultar header com timer e botão de compra
+        const chooseRowHeader = document.getElementById('choose-row-header');
+        const buyRowContainer = document.getElementById('buy-row-container');
+        const buyRowBtn = document.getElementById('buy-row-btn');
+        
+        const isChooseRowMode = (gameState === "CHOOSE_ROW" && pendingPlayerCard);
+        
+        // Adicionar/remover classe no body para aplicar estilos específicos no mobile
+        if (isChooseRowMode) {
+            document.body.classList.add('choosing-row');
+            if (chooseRowHeader) chooseRowHeader.style.display = 'block';
+            if (buyRowContainer) buyRowContainer.style.display = 'block';
+            if (buyRowBtn) buyRowBtn.disabled = selectedRowIndex === null;
+        } else {
+            document.body.classList.remove('choosing-row');
+            if (chooseRowHeader) chooseRowHeader.style.display = 'none';
+            if (buyRowContainer) buyRowContainer.style.display = 'none';
+        }
+        
+        // Mostrar/ocultar radio buttons
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const radio = document.getElementById(`radio-row-${i}`);
+            const radioLabel = document.getElementById(`radio-label-${i}`);
+            
+            if (isChooseRowMode) {
+                if (radio) radio.style.display = 'block';
+                if (radioLabel) radioLabel.style.display = 'flex';
+            } else {
+                if (radio) {
+                    radio.style.display = 'none';
+                    radio.checked = false;
+                }
+                if (radioLabel) radioLabel.style.display = 'none';
+            }
+        }
+
+        for (let i = 0; i < ROW_COUNT; i++) {
+            const rowDiv = document.getElementById(`row-${i}`);
+            if (!rowDiv) continue;
+            rowDiv.innerHTML = "";
+            const rowCards = boardRows[i] || [];
+            const isDanger = rowCards.length === MAX_ROW_LENGTH;
+            
+            if (isChooseRowMode) {
+                rowDiv.className = "row selectable";
+                if (selectedRowIndex === i) rowDiv.classList.add("selected");
+                rowDiv.onclick = () => selectRow(i);
+            } else {
+                rowDiv.className = "row";
+                rowDiv.onclick = null;
+            }
+            
+            if (isDanger) rowDiv.classList.add("full-danger");
+
+            for (let j = 0; j < 6; j++) {
+                if (j < rowCards.length) {
+                    rowDiv.appendChild(createCardElement(rowCards[j]));
+                } else if (j < 5) {
+                    const emptySlot = document.createElement("div");
+                    emptySlot.className = "slot empty";
+                    rowDiv.appendChild(emptySlot);
+                } else {
+                    const sixthSlot = document.createElement("div");
+                    sixthSlot.className = "slot sixth";
+                    rowDiv.appendChild(sixthSlot);
+                }
+            }
+        }
+
+        const handDiv = document.getElementById("player-hand");
+        if (handDiv && myPlayerIndex !== -1) {
+            handDiv.innerHTML = "";
+            const myHand = players[myPlayerIndex]?.hand || [];
+            myHand.forEach((card, idx) => {
+                const isMyTurn = (gameState === "SELECT");
+                handDiv.appendChild(createCardElement(card, isMyTurn, idx));
+            });
+        }
+
+        const sbList = document.getElementById("scoreboard-list");
+        if (sbList) {
+            sbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            console.log('updateUI - scoreboard players:', sortedPlayers.map(p => ({ name: p.name, isBot: p.isBot, score: p.score })));
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}${botIcon}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                sbList.appendChild(entry);
+            });
+        }
+        
+        // Atualizar placar mobile também
+        const mobileSbList = document.getElementById("mobile-scoreboard-list");
+        if (mobileSbList) {
+            mobileSbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}${botIcon}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                mobileSbList.appendChild(entry);
+            });
+        }
+        
+        // Atualizar número da rodada no mobile
+        const mobileRoundNum = document.getElementById("mobile-round-num");
+        if (mobileRoundNum) {
+            mobileRoundNum.textContent = currentTurn;
+        }
+        
+        // Atualizar placar inline mobile (abaixo da mão)
+        const mobileInlineSbList = document.getElementById("mobile-inline-scoreboard-list");
+        if (mobileInlineSbList) {
+            mobileInlineSbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}${botIcon}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                mobileInlineSbList.appendChild(entry);
+            });
+        }
+        
+        // Atualizar número da rodada no placar inline mobile
+        const mobileInlineRoundNum = document.getElementById("mobile-inline-round-num");
+        if (mobileInlineRoundNum) {
+            mobileInlineRoundNum.textContent = currentTurn;
+        }
+        
+        updateBotsActionArea();
+    }
+    
+    // Função para alternar o placar mobile
+    function toggleMobilePlacar() {
+        const modal = document.getElementById('mobile-placar-modal');
+        if (modal) {
+            modal.classList.toggle('show');
+        }
+    }
+    
+    // Função para alternar o placar no desktop (se necessário)
+    function togglePlacar() {
+        const content = document.getElementById('scoreboard-content');
+        const icon = document.getElementById('toggle-placar-icon');
+        if (content && icon) {
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+    }
+
+    // Check for room code in URL
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCode = urlParams.get('room');
+        if (roomCode) {
+            document.getElementById('room-code').value = roomCode.toUpperCase();
+            showJoinForm();
+        }
+    };
+
+</script>
 </body>
 </html>
