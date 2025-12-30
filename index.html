@@ -2006,6 +2006,7 @@
         
         // Parar timer de recuperação se estava esperando
         stopWaitingRecoveryTimer();
+        waitingRecoveryAttempts = 0; // Resetar contador de tentativas
         
         // Verificar se o jogador tem cartas na mão antes de pedir escolha
         const myHand = players[myPlayerIndex]?.hand || [];
@@ -2025,9 +2026,24 @@
                 startPlayerTurnTimer();
             }
         } else {
-            // NÃO definir como WAITING aqui - pode ser que as cartas ainda não foram distribuídas
-            // O finishTurn já cuida disso
-            console.log('syncGameState - player has no cards, keeping current gameState:', gameState);
+            // Verificar se alguém atingiu 66 pontos - se sim, o jogo deveria terminar
+            const someoneReached66 = players.some(p => p.score >= SCORE_LIMIT);
+            const allEmpty = players.every(p => p.hand.length === 0);
+            
+            if (allEmpty && someoneReached66) {
+                console.log('syncGameState - all empty and someone reached 66, game should end');
+                // O host deve enviar GAME_OVER, aguardar
+                gameState = "WAITING";
+                setStatus("Finalizando jogo...", "info");
+            } else if (allEmpty && !someoneReached66) {
+                console.log('syncGameState - all empty but no one reached 66, waiting for new cards');
+                gameState = "WAITING";
+                setStatus("Aguardando distribuição de novas cartas...", "info");
+                // Iniciar timer de recuperação caso o host não distribua
+                startWaitingRecoveryTimer();
+            } else {
+                console.log('syncGameState - player has no cards, keeping current gameState:', gameState);
+            }
         }
         
         updateUI();
@@ -2216,21 +2232,34 @@
             
             // Parar timer de recuperação
             stopWaitingRecoveryTimer();
+            waitingRecoveryAttempts = 0;
             
             players.forEach(p => p.lastPlayed = null);
             currentTurn++;
             
             // Verificar se o jogador tem cartas na mão antes de pedir escolha
             const myHand = players[myPlayerIndex]?.hand || [];
+            const allEmpty = players.every(p => p.hand.length === 0);
+            const someoneReached66 = players.some(p => p.score >= SCORE_LIMIT);
             
             if (myHand.length > 0) {
                 gameState = "SELECT";
                 setStatus("Sua vez - escolha uma carta", "action");
                 // Iniciar timer de jogada do jogador
                 startPlayerTurnTimer();
-            } else {
+            } else if (allEmpty && someoneReached66) {
+                // Jogo deveria terminar - aguardar GAME_OVER do host
+                gameState = "WAITING";
+                setStatus("Finalizando jogo...", "info");
+            } else if (allEmpty && !someoneReached66) {
+                // Aguardar novas cartas do host
                 gameState = "WAITING";
                 setStatus("Aguardando distribuição de novas cartas...", "info");
+                // Iniciar timer de recuperação caso o host não distribua
+                startWaitingRecoveryTimer();
+            } else {
+                gameState = "WAITING";
+                setStatus("Aguardando...", "info");
             }
             
             updateUI();
@@ -2626,20 +2655,25 @@
         const handEnded = players.every(p => p.hand.length === 0);
         
         // Verificar se alguem atingiu 66 pontos
-        const someoneReached66 = players.some(p => p.score >= 66);
+        const someoneReached66 = players.some(p => p.score >= SCORE_LIMIT);
         
-        // Verificar se há cartas suficientes no deck para uma nova rodada
-        const cardsNeededForNewRound = players.length * 10 + 4;
-        const canStartNewRound = deck.length >= cardsNeededForNewRound;
+        console.log('finishTurn - handEnded:', handEnded, 'someoneReached66:', someoneReached66, 'deckSize:', deck.length);
         
-        console.log('finishTurn - handEnded:', handEnded, 'someoneReached66:', someoneReached66, 'deckSize:', deck.length, 'canStartNewRound:', canStartNewRound);
-        
-        // CORREÇÃO: O jogo acaba quando:
-        // 1. A mão termina E alguém tem 66+ pontos, OU
-        // 2. A mão termina E não há cartas suficientes no deck para nova rodada
-        if (handEnded && (someoneReached66 || !canStartNewRound)) {
-            console.log('finishTurn - GAME OVER! someoneReached66:', someoneReached66, 'canStartNewRound:', canStartNewRound);
+        // CORREÇÃO: O jogo APENAS acaba quando:
+        // A mão termina E alguém tem 66+ pontos
+        // Se não há cartas no deck, o deck é recriado em distributeNewCards()
+        if (handEnded && someoneReached66) {
+            console.log('finishTurn - GAME OVER! someoneReached66:', someoneReached66);
             gameState = "END";
+            
+            // Parar todos os timers
+            stopWaitingRecoveryTimer();
+            stopStateCheckInterval();
+            if (playerTurnTimer) {
+                clearTimeout(playerTurnTimer);
+                playerTurnTimer = null;
+            }
+            
             const winner = players.reduce((a, b) => a.score < b.score ? a : b);
             
             // Criar ranking completo
@@ -2661,30 +2695,25 @@
             return; // Sair da função após fim de jogo
         }
         
-        // Distribuir novas cartas se a mão acabou
+        // Distribuir novas cartas se a mão acabou (apenas host distribui)
         if (handEnded && isHost) {
             console.log('finishTurn - hand ended, distributing new cards');
             const distributed = distributeNewCards();
             if (distributed) {
                 // NÃO enviar TURN_END aqui - distributeNewCards já envia GAME_STATE_SYNC
                 // que atualiza todos os jogadores com as novas cartas
+                console.log('finishTurn - new cards distributed successfully');
                 return; // Sair da função - distributeNewCards cuida de tudo
             } else {
-                // Se não conseguiu distribuir, forçar fim de jogo
-                console.log('finishTurn - could not distribute cards, forcing game over');
-                gameState = "END";
-                const winner = players.reduce((a, b) => a.score < b.score ? a : b);
-                const ranking = [...players].sort((a, b) => a.score - b.score);
-                showGameOverScreen(winner, ranking);
-                ws.send(JSON.stringify({
-                    type: 'GAME_ACTION',
-                    payload: {
-                        action: 'GAME_OVER',
-                        winner: winner.name,
-                        ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                // Isso não deveria acontecer mais, pois distributeNewCards recria o deck
+                console.error('finishTurn - distributeNewCards returned false unexpectedly');
+                // Tentar novamente
+                setTimeout(() => {
+                    if (isHost && players.every(p => p.hand.length === 0)) {
+                        console.log('finishTurn - retrying card distribution');
+                        distributeNewCards();
                     }
-                }));
-                updateUI();
+                }, 1000);
                 return;
             }
         }
@@ -2776,21 +2805,40 @@
         // Verificar se todos os jogadores esgotaram suas cartas
         const allEmpty = players.every(p => p.hand.length === 0);
         
-        // Verificar se há cartas suficientes no deck
-        const cardsNeeded = players.length * 10 + 4;
-        
         if (!allEmpty) {
             console.log('distributeNewCards - not all players empty');
             return false;
         }
         
+        // Verificar se há cartas suficientes no deck
+        const cardsNeeded = players.length * 10 + 4;
+        
+        // CORREÇÃO: Se não há cartas suficientes, recriar o deck completo
         if (deck.length < cardsNeeded) {
             console.log('distributeNewCards - not enough cards in deck:', deck.length, 'needed:', cardsNeeded);
-            // NÃO há cartas suficientes - retornar false para que finishTurn finalize o jogo
-            return false;
+            console.log('distributeNewCards - RECREATING DECK for new hand');
+            
+            // Recriar o deck completo
+            deck = [];
+            for (let i = 1; i <= TOTAL_CARDS; i++) {
+                deck.push({ number: i, tdb: calculateTdB(i) });
+            }
+            
+            // Embaralhar o novo deck
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            
+            console.log('distributeNewCards - new deck created with', deck.length, 'cards');
         }
         
-        console.log('Starting new round - all players had 0 cards');
+        console.log('Starting new hand - all players had 0 cards');
+        
+        // Limpar lastPlayed de todos os jogadores para a nova mão
+        players.forEach(p => {
+            p.lastPlayed = null;
+        });
         
         // Distribuir 10 cartas para cada jogador
         players.forEach(p => {
@@ -2821,13 +2869,15 @@
             return a[0].number - b[0].number;
         });
         
-        console.log('New round started - cards distributed, deck remaining:', deck.length);
+        console.log('New hand started - cards distributed, deck remaining:', deck.length);
         
-        // Enviar novo estado do jogo
+        // Enviar novo estado do jogo com scores atualizados
         const newGameState = {
             hands: players.map(p => p.hand),
             boardRows: boardRows,
-            currentTurn: currentTurn
+            currentTurn: currentTurn,
+            lastPlayed: players.map(p => null), // Limpar lastPlayed para todos
+            scores: players.map(p => p.score) // Incluir scores atualizados
         };
         
         ws.send(JSON.stringify({
@@ -2919,7 +2969,7 @@
     
     // Função para iniciar timer de recuperação quando em estado WAITING
     let waitingRecoveryAttempts = 0;
-    const MAX_WAITING_RECOVERY_ATTEMPTS = 3;
+    const MAX_WAITING_RECOVERY_ATTEMPTS = 5; // Aumentado para dar mais tempo
     
     function startWaitingRecoveryTimer() {
         // Limpar timer anterior se existir
@@ -2927,7 +2977,7 @@
             clearTimeout(waitingRecoveryTimer);
         }
         
-        console.log('startWaitingRecoveryTimer - iniciando timer de recuperação de 5 segundos (tentativa', waitingRecoveryAttempts + 1, ')');
+        console.log('startWaitingRecoveryTimer - iniciando timer de recuperação de 3 segundos (tentativa', waitingRecoveryAttempts + 1, ')');
         
         waitingRecoveryTimer = setTimeout(() => {
             console.log('startWaitingRecoveryTimer - timeout atingido, verificando estado');
@@ -2953,40 +3003,68 @@
                 return;
             }
             
-            // Se não temos cartas, verificar se o jogo deveria ter terminado
+            // Se não temos cartas, verificar o que fazer
             if (myHand.length === 0) {
                 waitingRecoveryAttempts++;
                 
                 // Verificar se todos os jogadores estão sem cartas
                 const allEmpty = players.every(p => p.hand.length === 0);
                 
-                if (allEmpty) {
-                    console.log('startWaitingRecoveryTimer - todos sem cartas, verificando se jogo deveria terminar');
+                // Verificar se alguém atingiu 66 pontos
+                const someoneReached66 = players.some(p => p.score >= SCORE_LIMIT);
+                
+                if (allEmpty && someoneReached66) {
+                    console.log('startWaitingRecoveryTimer - todos sem cartas E alguém atingiu 66, finalizando jogo');
+                    waitingRecoveryAttempts = 0;
                     
-                    // Se já tentamos várias vezes, forçar fim de jogo
-                    if (waitingRecoveryAttempts >= MAX_WAITING_RECOVERY_ATTEMPTS) {
-                        console.warn('startWaitingRecoveryTimer - MÁXIMO DE TENTATIVAS ATINGIDO, forçando fim de jogo');
+                    // Forçar fim de jogo localmente
+                    gameState = "END";
+                    stopStateCheckInterval();
+                    const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+                    const ranking = [...players].sort((a, b) => a.score - b.score);
+                    showGameOverScreen(winner, ranking);
+                    
+                    // Se for host, broadcast para todos
+                    if (isHost) {
+                        ws.send(JSON.stringify({
+                            type: 'GAME_ACTION',
+                            payload: {
+                                action: 'GAME_OVER',
+                                winner: winner.name,
+                                ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                            }
+                        }));
+                    }
+                    return;
+                }
+                
+                // Se todos estão sem cartas mas ninguém atingiu 66, solicitar distribuição
+                if (allEmpty && !someoneReached66) {
+                    console.log('startWaitingRecoveryTimer - todos sem cartas mas ninguém atingiu 66, solicitando nova distribuição');
+                    
+                    // Se for host, forçar distribuição
+                    if (isHost) {
+                        console.log('startWaitingRecoveryTimer - HOST forçando distribuição de novas cartas');
+                        distributeNewCards();
                         waitingRecoveryAttempts = 0;
-                        
-                        // Forçar fim de jogo localmente
-                        gameState = "END";
-                        const winner = players.reduce((a, b) => a.score < b.score ? a : b);
-                        const ranking = [...players].sort((a, b) => a.score - b.score);
-                        showGameOverScreen(winner, ranking);
-                        
-                        // Se for host, broadcast para todos
-                        if (isHost) {
-                            ws.send(JSON.stringify({
-                                type: 'GAME_ACTION',
-                                payload: {
-                                    action: 'GAME_OVER',
-                                    winner: winner.name,
-                                    ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
-                                }
-                            }));
-                        }
                         return;
                     }
+                }
+                
+                // Se já tentamos várias vezes sem sucesso
+                if (waitingRecoveryAttempts >= MAX_WAITING_RECOVERY_ATTEMPTS) {
+                    console.warn('startWaitingRecoveryTimer - MÁXIMO DE TENTATIVAS ATINGIDO');
+                    
+                    // Se for host, forçar distribuição de cartas
+                    if (isHost && allEmpty) {
+                        console.log('startWaitingRecoveryTimer - HOST forçando distribuição após máximo de tentativas');
+                        waitingRecoveryAttempts = 0;
+                        distributeNewCards();
+                        return;
+                    }
+                    
+                    // Se não é host, continuar tentando sync
+                    waitingRecoveryAttempts = 0;
                 }
                 
                 console.log('startWaitingRecoveryTimer - ainda sem cartas, solicitando sync do host');
@@ -3000,7 +3078,7 @@
                 // Reiniciar timer para tentar novamente
                 startWaitingRecoveryTimer();
             }
-        }, 5000); // 5 segundos (reduzido de 10 para recuperação mais rápida)
+        }, 3000); // 3 segundos para recuperação mais rápida
     }
     
     // Função para parar timer de recuperação
@@ -3018,7 +3096,7 @@
             clearInterval(stateCheckInterval);
         }
         
-        console.log('startStateCheckInterval - iniciando verificação periódica a cada 5 segundos');
+        console.log('startStateCheckInterval - iniciando verificação periódica a cada 3 segundos');
         
         stateCheckInterval = setInterval(() => {
             // Só verificar se estamos em jogo
@@ -3026,10 +3104,12 @@
                 return;
             }
             
-            console.log('stateCheckInterval - verificando estado:', gameState);
+            console.log('stateCheckInterval - verificando estado:', gameState, 'isHost:', isHost);
             
             const myHand = players[myPlayerIndex]?.hand || [];
             const myPlayer = players[myPlayerIndex];
+            const allEmpty = players.every(p => p.hand.length === 0);
+            const someoneReached66 = players.some(p => p.score >= SCORE_LIMIT);
             
             // Verificação 1: Estamos em WAITING mas temos cartas e não jogamos ainda
             if (gameState === "WAITING" && myHand.length > 0 && myPlayer && !myPlayer.lastPlayed) {
@@ -3038,6 +3118,7 @@
                 setStatus("Sua vez - escolha uma carta", "action");
                 startPlayerTurnTimer();
                 updateUI();
+                return;
             }
             
             // Verificação 2: Todos jogaram mas ainda estamos em WAITING (apenas host processa)
@@ -3045,8 +3126,9 @@
                 const allPlayed = players.every(p => p.lastPlayed !== null);
                 if (allPlayed) {
                     console.warn('stateCheckInterval - ANOMALIA DETECTADA: Todos jogaram mas ainda em WAITING');
-                    console.log('stateCheckInterval - host calling checkAllPlayersPlayed instead of processRound directly');
+                    console.log('stateCheckInterval - host calling checkAllPlayersPlayed');
                     checkAllPlayersPlayed();
+                    return;
                 }
             } else if (!isHost && gameState === "WAITING") {
                 // Jogador não-host: apenas solicitar sync do host se todos parecem ter jogado
@@ -3059,6 +3141,7 @@
                             action: 'REQUEST_SYNC'
                         }
                     }));
+                    return;
                 }
             }
             
@@ -3068,8 +3151,48 @@
                 gameState = "WAITING";
                 setStatus("Aguardando outros jogadores...", "info");
                 updateUI();
+                return;
             }
-        }, 5000); // A cada 5 segundos
+            
+            // Verificação 4: HOST - Todos sem cartas, verificar se deve distribuir ou finalizar
+            if (isHost && allEmpty && gameState === "WAITING") {
+                console.log('stateCheckInterval - HOST: todos sem cartas, verificando ação');
+                
+                if (someoneReached66) {
+                    console.log('stateCheckInterval - HOST: alguém atingiu 66, finalizando jogo');
+                    gameState = "END";
+                    stopStateCheckInterval();
+                    stopWaitingRecoveryTimer();
+                    const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+                    const ranking = [...players].sort((a, b) => a.score - b.score);
+                    showGameOverScreen(winner, ranking);
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'GAME_OVER',
+                            winner: winner.name,
+                            ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                        }
+                    }));
+                } else {
+                    console.log('stateCheckInterval - HOST: ninguém atingiu 66, distribuindo novas cartas');
+                    distributeNewCards();
+                }
+                return;
+            }
+            
+            // Verificação 5: Não-HOST - Todos sem cartas, solicitar sync
+            if (!isHost && allEmpty && gameState === "WAITING") {
+                console.log('stateCheckInterval - non-host: todos sem cartas, solicitando sync');
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'REQUEST_FULL_SYNC'
+                    }
+                }));
+                return;
+            }
+        }, 3000); // A cada 3 segundos para recuperação mais rápida
     }
     
     // Função para parar verificação periódica
