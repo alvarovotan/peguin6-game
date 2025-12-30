@@ -287,11 +287,11 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 36px;
-                --card-h: 54px;
+                --card-w: 42px;
+                --card-h: 62px;
                 --row-gap: 4px;
-                --row-h: 64px;
-                --row-padding: 4px;
+                --row-h: 72px;
+                --row-padding: 5px;
             }
             
             body {
@@ -338,10 +338,10 @@
             
             .main-layout {
                 flex-direction: column;
-                height: calc(100vh - 55px);
+                height: calc(100vh - 50px);
                 width: 100%;
                 padding: 0 5px;
-                gap: 8px;
+                gap: 5px;
                 overflow: hidden;
                 padding-bottom: 0;
             }
@@ -353,7 +353,7 @@
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                padding-bottom: 140px;
+                padding-bottom: 95px;
             }
             
             /* Ocultar sidebar no mobile */
@@ -377,9 +377,9 @@
                 background: rgba(187, 134, 252, 0.15);
                 border: 1px solid var(--accent-color);
                 color: var(--accent-color);
-                padding: 6px 14px;
+                padding: 5px 12px;
                 border-radius: 20px;
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 font-weight: bold;
                 text-transform: uppercase;
                 cursor: pointer;
@@ -394,7 +394,7 @@
             /* Modal do placar retrátil */
             .mobile-placar-modal {
                 position: fixed !important;
-                top: 55px !important;
+                top: 50px !important;
                 left: 10px !important;
                 right: 10px !important;
                 background: var(--surface-color) !important;
@@ -429,7 +429,7 @@
             
             /* === BOARD - Cartas da mesa === */
             .board {
-                padding: 6px;
+                padding: 8px;
                 width: 100%;
                 overflow-x: auto;
                 overflow-y: visible;
@@ -438,6 +438,7 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                align-items: center;
             }
             
             .row {
@@ -448,32 +449,32 @@
             }
             
             .row-wrapper {
-                gap: 6px;
-                margin-bottom: 6px;
+                gap: 8px;
+                margin-bottom: 4px;
             }
             
             .radio-label {
-                width: 22px;
-                height: 22px;
+                width: 24px;
+                height: 24px;
                 border-width: 2px;
             }
             
             #status-bar {
-                font-size: 0.8rem;
-                padding: 6px;
-                min-height: 32px;
+                font-size: 0.75rem;
+                padding: 5px 8px;
+                min-height: 28px;
             }
             
             header {
-                padding: 8px 10px !important;
+                padding: 6px 10px !important;
             }
             
             header h1 {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
             
             .subtitle {
-                font-size: 0.65rem;
+                font-size: 0.6rem;
             }
             
             .card {
@@ -482,7 +483,7 @@
             }
             
             .card-number {
-                font-size: 1rem;
+                font-size: 1.1rem;
             }
             
             .card-dots {
@@ -490,7 +491,7 @@
                 line-height: 4px;
             }
             
-            /* === PLAYER AREA - Footer fixo === */
+            /* === PLAYER AREA - Footer fixo e compacto === */
             .player-area {
                 position: fixed !important;
                 bottom: 0 !important;
@@ -499,9 +500,9 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 10px 8px 12px 8px !important;
+                padding: 6px 5px 8px 5px !important;
                 background-color: var(--surface-color) !important;
-                border-radius: 16px 16px 0 0 !important;
+                border-radius: 12px 12px 0 0 !important;
                 box-shadow: 0 -4px 20px rgba(0,0,0,0.6) !important;
                 z-index: 100 !important;
                 border: 1px solid rgba(255,255,255,0.1) !important;
@@ -509,9 +510,9 @@
             }
             
             .player-area > div:first-child {
-                margin-bottom: 8px !important;
+                margin-bottom: 4px !important;
                 color: var(--text-secondary) !important;
-                font-size: 0.7rem !important;
+                font-size: 0.6rem !important;
                 text-align: center !important;
                 font-weight: 600 !important;
                 letter-spacing: 1px !important;
@@ -519,31 +520,41 @@
             }
             
             .hand {
-                gap: 5px;
+                gap: 3px;
                 flex-wrap: wrap;
                 justify-content: center;
-                padding: 0 4px;
+                padding: 0 2px;
             }
             
+            /* Cartas da mão menores para caber todas */
             .hand .card {
                 cursor: pointer;
-                width: 36px !important;
-                height: 54px !important;
+                width: 30px !important;
+                height: 44px !important;
+            }
+            
+            .hand .card .card-number {
+                font-size: 0.85rem;
+            }
+            
+            .hand .card .card-dots {
+                font-size: 3px;
+                line-height: 3px;
             }
             
             .bots-action-area {
-                min-height: 20px;
+                min-height: 18px;
             }
             
             .bot-action-card {
-                font-size: 0.7rem;
-                padding: 3px 8px;
+                font-size: 0.65rem;
+                padding: 2px 6px;
             }
             
-            /* Botão comprar fileira */
+            /* Botão comprar fileira - acima do footer */
             #buy-row-container {
                 position: fixed !important;
-                bottom: 145px !important;
+                bottom: 100px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
                 z-index: 99 !important;
@@ -551,19 +562,34 @@
             }
             
             #buy-row-btn {
-                padding: 12px 28px !important;
-                font-size: 0.9rem !important;
+                padding: 10px 24px !important;
+                font-size: 0.85rem !important;
                 font-weight: bold !important;
                 box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4) !important;
             }
             
             .choose-row-btn {
-                padding: 10px 20px;
-                font-size: 0.9rem;
+                padding: 8px 16px;
+                font-size: 0.85rem;
             }
             
             .timer-display {
-                font-size: 1rem;
+                font-size: 0.9rem;
+            }
+            
+            /* Header do modo escolha de fileira */
+            #choose-row-header {
+                padding: 5px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            #choose-row-header > div:first-child {
+                font-size: 0.9rem !important;
+            }
+            
+            #choose-row-timer {
+                font-size: 1.2rem !important;
+                margin-top: 2px !important;
             }
         }
         
@@ -574,41 +600,33 @@
         
         /* --- Modo de Seleção de Fileira no Mobile --- */
         @media (max-width: 768px) {
+            body.choosing-row .game-area {
+                padding-bottom: 140px !important;
+            }
+            
             body.choosing-row .board {
                 max-height: none !important;
                 overflow-y: visible !important;
-                padding: 2px;
-            }
-            
-            body.choosing-row :root {
-                --card-w: 22px;
-                --card-h: 34px;
-                --row-gap: 2px;
-                --row-h: 40px;
-                --row-padding: 2px;
-            }
-            
-            body.choosing-row .board {
                 padding: 4px;
             }
             
             body.choosing-row .row-wrapper {
-                gap: 3px;
-                margin-bottom: 2px;
+                gap: 6px;
+                margin-bottom: 3px;
             }
             
             body.choosing-row .radio-label {
-                width: 14px;
-                height: 14px;
+                width: 20px;
+                height: 20px;
             }
             
             body.choosing-row .card {
-                width: 22px;
-                height: 34px;
+                width: 32px !important;
+                height: 46px !important;
             }
             
             body.choosing-row .card-number {
-                font-size: 0.75rem;
+                font-size: 0.85rem;
             }
             
             body.choosing-row .card-dots {
@@ -617,65 +635,61 @@
             }
             
             body.choosing-row .slot {
-                width: 24px;
-                height: 36px;
+                width: 32px;
+                height: 46px;
             }
             
             body.choosing-row .row {
-                height: 44px;
-                padding: 2px;
-                gap: 2px;
+                height: 54px;
+                padding: 3px;
+                gap: 3px;
+            }
+            
+            body.choosing-row #buy-row-container {
+                bottom: 105px !important;
             }
         }
         
         @media (max-width: 480px) {
-            body.choosing-row :root {
-                --card-w: 22px;
-                --card-h: 34px;
-                --row-gap: 1px;
-                --row-h: 40px;
-                --row-padding: 2px;
-            }
-            
             body.choosing-row .radio-label {
-                width: 14px;
-                height: 14px;
+                width: 18px;
+                height: 18px;
             }
             
             body.choosing-row .row-radio:checked + .radio-label::after {
-                width: 5px;
-                height: 5px;
+                width: 6px;
+                height: 6px;
             }
             
             body.choosing-row .card {
-                width: 22px;
-                height: 34px;
+                width: 28px !important;
+                height: 40px !important;
             }
             
             body.choosing-row .card-number {
-                font-size: 0.7rem;
+                font-size: 0.75rem;
             }
             
             body.choosing-row .slot {
-                width: 22px;
-                height: 34px;
+                width: 28px;
+                height: 40px;
             }
             
             body.choosing-row .row {
-                height: 40px;
-                padding: 2px;
-                gap: 1px;
+                height: 48px;
+                padding: 3px;
+                gap: 2px;
             }
         }
         
         /* --- Responsividade Mobile Pequeno --- */
         @media (max-width: 480px) {
             :root {
-                --card-w: 32px;
-                --card-h: 48px;
+                --card-w: 36px;
+                --card-h: 52px;
                 --row-gap: 3px;
-                --row-h: 56px;
-                --row-padding: 3px;
+                --row-h: 60px;
+                --row-padding: 4px;
             }
             
             .lobby-container {
@@ -697,7 +711,7 @@
             }
             
             .card-number {
-                font-size: 0.9rem;
+                font-size: 0.95rem;
             }
             
             .score-entry {
@@ -711,40 +725,70 @@
             }
             
             .radio-label {
-                width: 18px;
-                height: 18px;
+                width: 20px;
+                height: 20px;
                 border-width: 2px;
             }
             
             .row-radio:checked + .radio-label::after {
-                width: 6px;
-                height: 6px;
+                width: 8px;
+                height: 8px;
             }
             
             header h1 {
-                font-size: 1rem;
+                font-size: 0.95rem;
             }
             
             #status-bar {
-                font-size: 0.75rem;
+                font-size: 0.7rem;
+                padding: 4px 6px;
+                min-height: 24px;
             }
             
+            /* Cartas da mão ainda menores em telas pequenas */
             .hand .card {
-                width: 32px !important;
-                height: 48px !important;
+                width: 28px !important;
+                height: 40px !important;
+            }
+            
+            .hand .card .card-number {
+                font-size: 0.8rem;
+            }
+            
+            .hand .card .card-dots {
+                font-size: 2.5px;
+                line-height: 2.5px;
             }
             
             .game-area {
-                padding-bottom: 130px;
+                padding-bottom: 85px;
+            }
+            
+            .player-area {
+                padding: 5px 4px 6px 4px !important;
+            }
+            
+            .player-area > div:first-child {
+                margin-bottom: 3px !important;
+                font-size: 0.55rem !important;
+            }
+            
+            .hand {
+                gap: 2px;
             }
             
             #buy-row-container {
-                bottom: 135px !important;
+                bottom: 95px !important;
+            }
+            
+            #buy-row-btn {
+                padding: 8px 20px !important;
+                font-size: 0.8rem !important;
             }
             
             .mobile-placar-header-btn {
-                padding: 5px 10px;
-                font-size: 0.7rem;
+                padding: 4px 8px;
+                font-size: 0.65rem;
             }
         }
 
