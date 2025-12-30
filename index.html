@@ -1961,9 +1961,18 @@
 
         console.log('syncGameState - myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
         
-        gameState = "SELECT";
+        // Verificar se o jogador tem cartas na mão antes de pedir escolha
+        const myHand = players[myPlayerIndex]?.hand || [];
+        
+        if (myHand.length > 0) {
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+        } else {
+            gameState = "WAITING";
+            setStatus("Aguardando distribuição de novas cartas...", "info");
+        }
+        
         updateUI();
-        setStatus("Sua vez - escolha uma carta", "action");
         
         // Fazer bots jogarem automaticamente (apenas o host controla os bots)
         if (isHost) {
@@ -2067,9 +2076,19 @@
         } else if (payload.action === 'TURN_END') {
             players.forEach(p => p.lastPlayed = null);
             currentTurn++;
-            gameState = "SELECT";
+            
+            // Verificar se o jogador tem cartas na mão antes de pedir escolha
+            const myHand = players[myPlayerIndex]?.hand || [];
+            
+            if (myHand.length > 0) {
+                gameState = "SELECT";
+                setStatus("Sua vez - escolha uma carta", "action");
+            } else {
+                gameState = "WAITING";
+                setStatus("Aguardando distribuição de novas cartas...", "info");
+            }
+            
             updateUI();
-            setStatus("Sua vez - escolha uma carta", "action");
             
             // Fazer bots jogarem automaticamente (apenas o host controla os bots)
             if (isHost) {
@@ -2397,8 +2416,17 @@
                 distributeNewCards();
             }
             
-            gameState = "SELECT";
-            setStatus("Sua vez - escolha uma carta", "action");
+            // Verificar se o jogador tem cartas na mão antes de pedir escolha
+            const myHand = players[myPlayerIndex]?.hand || [];
+            
+            if (myHand.length > 0) {
+                gameState = "SELECT";
+                setStatus("Sua vez - escolha uma carta", "action");
+            } else {
+                // Se não tem cartas, aguardar distribuição ou fim de jogo
+                gameState = "WAITING";
+                setStatus("Aguardando distribuição de novas cartas...", "info");
+            }
             
             // Broadcast para outros jogadores
             ws.send(JSON.stringify({
