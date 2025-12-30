@@ -384,6 +384,7 @@
             .row {
                 width: calc((6 * var(--card-w)) + (5 * var(--row-gap)) + (2 * var(--row-padding)));
                 min-width: fit-content;
+                max-width: 100%;
             }
             
             .row-wrapper {
@@ -460,15 +461,16 @@
         /* --- Modo de Seleção de Fileira no Mobile --- */
         @media (max-width: 768px) {
             body.choosing-row .board {
-                max-height: 55vh;
-                overflow-y: auto;
+                max-height: none;
+                overflow-y: visible;
+                padding: 2px;
             }
             
             body.choosing-row :root {
-                --card-w: 24px;
-                --card-h: 36px;
+                --card-w: 22px;
+                --card-h: 34px;
                 --row-gap: 2px;
-                --row-h: 44px;
+                --row-h: 40px;
                 --row-padding: 2px;
             }
             
@@ -477,18 +479,18 @@
             }
             
             body.choosing-row .row-wrapper {
-                gap: 4px;
-                margin-bottom: 3px;
+                gap: 3px;
+                margin-bottom: 2px;
             }
             
             body.choosing-row .radio-label {
-                width: 16px;
-                height: 16px;
+                width: 14px;
+                height: 14px;
             }
             
             body.choosing-row .card {
-                width: 24px;
-                height: 36px;
+                width: 22px;
+                height: 34px;
             }
             
             body.choosing-row .card-number {
