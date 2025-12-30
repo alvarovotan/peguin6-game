@@ -1969,23 +1969,24 @@
         // Verificar se o jogador tem cartas na mão antes de pedir escolha
         const myHand = players[myPlayerIndex]?.hand || [];
         
-            if (myHand.length > 0) {
-                gameState = "SELECT";
-                setStatus("Sua vez - escolha uma carta", "action");
-                // Iniciar timer de jogada do jogador
-                startPlayerTurnTimer();
-            } else {
-                gameState = "WAITING";
-                setStatus("Aguardando distribuição de novas cartas...", "info");
-            }
-            
-            updateUI();
-            
-            // Fazer bots jogarem automaticamente (apenas o host controla os bots)
-            if (isHost) {
-                setTimeout(() => triggerBotPlays(), 1000);
-            }
+        if (myHand.length > 0) {
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+            // Iniciar timer de jogada do jogador
+            startPlayerTurnTimer();
+        } else {
+            // NÃO definir como WAITING aqui - pode ser que as cartas ainda não foram distribuídas
+            // O finishTurn já cuida disso
+            console.log('syncGameState - player has no cards, keeping current gameState:', gameState);
         }
+        
+        updateUI();
+        
+        // Fazer bots jogarem automaticamente (apenas o host controla os bots)
+        if (isHost) {
+            setTimeout(() => triggerBotPlays(), 1000);
+        }
+    }
 
     function handleCardClick(cardIndex) {
         console.log('handleCardClick - cardIndex:', cardIndex, 'gameState:', gameState, 'myPlayerIndex:', myPlayerIndex);
@@ -2574,6 +2575,15 @@
             type: 'GAME_STATE_SYNC',
             payload: { gameState: newGameState }
         }));
+        
+        // Atualizar o gameState do host também
+        gameState = "SELECT";
+        setStatus("Sua vez - escolha uma carta", "action");
+        startPlayerTurnTimer();
+        updateUI();
+        
+        // Fazer bots jogarem
+        setTimeout(() => triggerBotPlays(), 1000);
     }
 
     // Função para iniciar o timer de jogada do jogador
