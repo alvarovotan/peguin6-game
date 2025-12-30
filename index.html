@@ -2810,28 +2810,23 @@
             return false;
         }
         
-        // Verificar se há cartas suficientes no deck
-        const cardsNeeded = players.length * 10 + 4;
+        // CORREÇÃO DEFINITIVA: Sempre recriar o deck completo para nova mão
+        // Isso garante que não haverá cartas repetidas
+        console.log('distributeNewCards - RECREATING FULL DECK for new hand');
         
-        // CORREÇÃO: Se não há cartas suficientes, recriar o deck completo
-        if (deck.length < cardsNeeded) {
-            console.log('distributeNewCards - not enough cards in deck:', deck.length, 'needed:', cardsNeeded);
-            console.log('distributeNewCards - RECREATING DECK for new hand');
-            
-            // Recriar o deck completo
-            deck = [];
-            for (let i = 1; i <= TOTAL_CARDS; i++) {
-                deck.push({ number: i, tdb: calculateTdB(i) });
-            }
-            
-            // Embaralhar o novo deck
-            for (let i = deck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [deck[i], deck[j]] = [deck[j], deck[i]];
-            }
-            
-            console.log('distributeNewCards - new deck created with', deck.length, 'cards');
+        // Recriar o deck completo (104 cartas)
+        deck = [];
+        for (let i = 1; i <= TOTAL_CARDS; i++) {
+            deck.push({ number: i, tdb: calculateTdB(i) });
         }
+        
+        // Embaralhar o novo deck
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        
+        console.log('distributeNewCards - new deck created with', deck.length, 'cards');
         
         console.log('Starting new hand - all players had 0 cards');
         
@@ -2871,27 +2866,39 @@
         
         console.log('New hand started - cards distributed, deck remaining:', deck.length);
         
-        // Enviar novo estado do jogo com scores atualizados
-        const newGameState = {
-            hands: players.map(p => p.hand),
-            boardRows: boardRows,
-            currentTurn: currentTurn,
-            lastPlayed: players.map(p => null), // Limpar lastPlayed para todos
-            scores: players.map(p => p.score) // Incluir scores atualizados
-        };
+        // Resetar o estado do jogo para PLAYING
+        gameState = "PLAYING";
         
+        // Enviar novo estado do jogo com scores atualizados via WebSocket
         ws.send(JSON.stringify({
             type: 'GAME_STATE_SYNC',
-            payload: { gameState: newGameState }
+            payload: {
+                hands: players.map(p => p.hand),
+                boardRows: boardRows,
+                currentTurn: currentTurn,
+                lastPlayed: players.map(p => null),
+                scores: players.map(p => p.score)
+            }
         }));
         
-        // Atualizar o gameState do host também
-        gameState = "SELECT";
-        setStatus("Sua vez - escolha uma carta", "action");
-        startPlayerTurnTimer();
+        console.log('distributeNewCards - GAME_STATE_SYNC sent to all players');
+        
+        // Atualizar o gameState do host para PLAYING
+        gameState = "PLAYING";
+        
+        // Verificar se é a vez do jogador humano
+        const myHand = players[myPlayerIndex]?.hand || [];
+        if (myHand.length > 0) {
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+            startPlayerTurnTimer();
+        } else {
+            setStatus("Aguardando sua vez...", "info");
+        }
+        
         updateUI();
         
-        // Fazer bots jogarem
+        // Fazer bots jogarem automaticamente
         setTimeout(() => triggerBotPlays(), 1000);
         
         return true; // Distribuição bem-sucedida
