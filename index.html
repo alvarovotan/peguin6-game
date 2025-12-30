@@ -287,11 +287,11 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 36px;
-                --card-h: 54px;
-                --row-gap: 3px;
-                --row-h: 68px;
-                --row-padding: 4px;
+                --card-w: 30px;
+                --card-h: 46px;
+                --row-gap: 2px;
+                --row-h: 56px;
+                --row-padding: 3px;
             }
             
             body {
@@ -371,9 +371,11 @@
             }
             
             .board {
-                padding: 8px;
+                padding: 6px;
                 width: 100%;
                 overflow-x: auto;
+                max-height: 60vh;
+                overflow-y: auto;
             }
             
             .row {
@@ -382,13 +384,14 @@
             }
             
             .row-wrapper {
-                gap: 8px;
-                margin-bottom: 6px;
+                gap: 6px;
+                margin-bottom: 4px;
             }
             
             .radio-label {
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
+                border-width: 2px;
             }
             
             #status-bar {
@@ -454,11 +457,11 @@
         /* --- Responsividade Mobile Pequeno --- */
         @media (max-width: 480px) {
             :root {
-                --card-w: 32px;
-                --card-h: 48px;
+                --card-w: 26px;
+                --card-h: 40px;
                 --row-gap: 2px;
-                --row-h: 60px;
-                --row-padding: 3px;
+                --row-h: 50px;
+                --row-padding: 2px;
             }
             
             .lobby-container {
@@ -494,13 +497,14 @@
             }
             
             .radio-label {
-                width: 20px;
-                height: 20px;
+                width: 18px;
+                height: 18px;
+                border-width: 2px;
             }
             
             .row-radio:checked + .radio-label::after {
-                width: 8px;
-                height: 8px;
+                width: 6px;
+                height: 6px;
             }
             
             header h1 {
@@ -1819,9 +1823,18 @@
     }
 
     // Verificar se todos os jogadores jogaram suas cartas
+    let checkAllPlayersPlayedCalls = 0;
     function checkAllPlayersPlayed() {
         console.log('checkAllPlayersPlayed - START');
         console.log('checkAllPlayersPlayed - total players:', players.length);
+        
+        // Proteção contra loops infinitos
+        checkAllPlayersPlayedCalls++;
+        if (checkAllPlayersPlayedCalls > 20) {
+            console.error('checkAllPlayersPlayed - too many calls, resetting');
+            checkAllPlayersPlayedCalls = 0;
+            return;
+        }
         
         players.forEach((p, idx) => {
             console.log(`checkAllPlayersPlayed - Player ${idx}: ${p.name}, isBot: ${p.isBot}, lastPlayed: ${p.lastPlayed?.number || 'null'}, handSize: ${p.hand?.length || 0}`);
@@ -1832,18 +1845,22 @@
         
         if (allPlayed) {
             console.log('checkAllPlayersPlayed - all players played, processing round');
+            checkAllPlayersPlayedCalls = 0; // Reset counter
             // Pequeno delay para garantir que a UI atualize
             setTimeout(() => processRound(), 500);
         } else {
             console.log('checkAllPlayersPlayed - waiting for more players');
             // Verificar se há bots que ainda não jogaram
-            const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed);
+            const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed && p.hand && p.hand.length > 0);
             console.log('checkAllPlayersPlayed - bots not played count:', botsNotPlayed.length);
             
             if (botsNotPlayed.length > 0 && isHost) {
                 console.log('checkAllPlayersPlayed - bots not played:', botsNotPlayed.map(b => b.name));
-                console.log('checkAllPlayersPlayed - triggering bot plays again in 500ms');
-                setTimeout(() => triggerBotPlays(), 500);
+                console.log('checkAllPlayersPlayed - triggering bot plays again in 800ms');
+                setTimeout(() => triggerBotPlays(), 800);
+            } else {
+                // Resetar contador se não há mais bots para jogar
+                checkAllPlayersPlayedCalls = 0;
             }
         }
     }
@@ -1855,6 +1872,9 @@
     
     function processRound() {
         console.log('processRound - processing cards');
+        
+        // Reset do contador de chamadas recursivas
+        checkAllPlayersPlayedCalls = 0;
         
         // Ordenar jogadores pela carta jogada (menor para maior)
         cardsToProcess = players.map((p, idx) => ({
@@ -2100,8 +2120,9 @@
             }));
             
             // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
+            // Aguardar um pouco mais para garantir que o estado foi atualizado
             if (isHost) {
-                triggerBotPlays();
+                setTimeout(() => triggerBotPlays(), 1000);
             }
         }
         
