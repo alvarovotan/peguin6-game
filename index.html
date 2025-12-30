@@ -2050,7 +2050,8 @@
         
         // Fazer bots jogarem automaticamente (apenas o host controla os bots)
         if (isHost) {
-            setTimeout(() => triggerBotPlays(), 1000);
+            // Garantir que bots joguem se ainda houver cartas na mão
+            setTimeout(() => triggerBotPlays(), 800);
         }
     }
 
@@ -2248,9 +2249,12 @@
                 // Iniciar timer de jogada do jogador
                 startPlayerTurnTimer();
             } else if (allEmpty && someoneReached66) {
-                // Jogo deveria terminar - aguardar GAME_OVER do host
+                // Jogo termina APENAS quando as mãos estão vazias E alguém atingiu o limite
                 gameState = "WAITING";
                 setStatus("Finalizando jogo...", "info");
+                if (isHost) {
+                    setTimeout(() => finishGame(), 1500);
+                }
             } else if (allEmpty && !someoneReached66) {
                 // Aguardar novas cartas do host
                 gameState = "WAITING";
@@ -2370,6 +2374,11 @@
             // Pequeno delay para garantir que a UI atualize
             setTimeout(() => processRound(), 500);
         } else {
+            // Se não todos jogaram, mas o jogo está em WAITING por muito tempo, forçar bots
+            if (isHost && gameState === "WAITING") {
+                console.log('checkAllPlayersPlayed - game is WAITING but not all played, triggering bots');
+                setTimeout(() => triggerBotPlays(), 1000);
+            }
             console.log('checkAllPlayersPlayed - waiting for more players');
             // Verificar se há bots que ainda não jogaram
             const botsNotPlayed = players.filter(p => p.isBot && !p.lastPlayed && p.hand && p.hand.length > 0);
@@ -2756,7 +2765,8 @@
         // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
         // Aguardar um pouco mais para garantir que o estado foi atualizado
         if (isHost) {
-            setTimeout(() => triggerBotPlays(), 1000);
+            // Garantir que bots joguem se ainda houver cartas na mão
+            setTimeout(() => triggerBotPlays(), 800);
         }
         
         updateUI();
