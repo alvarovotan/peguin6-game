@@ -2153,33 +2153,51 @@
             }
         } else if (payload.action === 'CARD_PLACED') {
             // Handle card placement
-            if (payload.rowIndex !== undefined && payload.card) {
+            // IMPORTANTE: Host já aplicou a carta localmente em placeCardOnBoard()
+            // Apenas jogadores não-host devem processar CARD_PLACED
+            if (!isHost && payload.rowIndex !== undefined && payload.card) {
+                console.log('CARD_PLACED received - non-host applying card:', payload.card.number, 'to row:', payload.rowIndex);
                 if (payload.isSixthCard) {
                     // Row was taken
                     boardRows[payload.rowIndex] = [payload.card];
                     if (payload.points !== undefined) {
                         const player = players.find(p => p.id === payload.playerId);
-                        if (player) player.score += payload.points;
+                        if (player) {
+                            console.log('CARD_PLACED - updating player score:', player.name, 'adding', payload.points, 'points');
+                            player.score += payload.points;
+                        }
                     }
                 } else {
+                    console.log('CARD_PLACED - adding card to row, current row:', boardRows[payload.rowIndex].map(c => c.number));
                     boardRows[payload.rowIndex].push(payload.card);
+                    console.log('CARD_PLACED - row after adding:', boardRows[payload.rowIndex].map(c => c.number));
                 }
                 updateUI();
+            } else if (isHost) {
+                console.log('CARD_PLACED received - host ignoring (already applied locally)');
             }
         } else if (payload.action === 'ROW_SELECTED') {
             // Handle row selection for low card
-            if (payload.rowIndex !== undefined && payload.card) {
+            // IMPORTANTE: Host já aplicou localmente em confirmRowPurchase()
+            // Apenas jogadores não-host devem processar ROW_SELECTED
+            if (!isHost && payload.rowIndex !== undefined && payload.card) {
+                console.log('ROW_SELECTED received - non-host applying:', payload.card.number, 'to row:', payload.rowIndex);
                 boardRows[payload.rowIndex] = [payload.card];
                 if (payload.points !== undefined) {
                     const player = players.find(p => p.id === payload.playerId);
-                    if (player) player.score += payload.points;
+                    if (player) {
+                        console.log('ROW_SELECTED - updating player score:', player.name, 'adding', payload.points, 'points');
+                        player.score += payload.points;
+                    }
                 }
                 updateUI();
-                
-                // Se sou o host e outro jogador escolheu, continuar processando
-                if (isHost && payload.playerId !== playerId) {
-                    onRowSelectionComplete();
-                }
+            } else if (isHost) {
+                console.log('ROW_SELECTED received - host ignoring (already applied locally)');
+            }
+            
+            // Host sempre continua processando (ele controla o fluxo)
+            if (isHost && payload.rowIndex !== undefined) {
+                onRowSelectionComplete();
             }
         } else if (payload.action === 'CHOOSE_ROW_REQUEST') {
             // Outro jogador precisa escolher uma fileira - verificar se sou eu
