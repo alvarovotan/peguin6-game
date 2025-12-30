@@ -1757,17 +1757,21 @@
         document.getElementById('lobby-screen').style.display = 'none';
         document.getElementById('game-screen').classList.add('show');
 
-        deck = [];
-        for (let i = 1; i <= TOTAL_CARDS; i++) deck.push({ number: i, tdb: calculateTdB(i) });
-        
-        // Shuffle
-        for (let i = deck.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-
-        // Deal cards (only host generates and distributes)
+        // IMPORTANTE: Apenas o host cria e distribui o deck
+        // Jogadores não-host recebem as cartas via GAME_STATE_SYNC
         if (isHost) {
+            deck = [];
+            for (let i = 1; i <= TOTAL_CARDS; i++) deck.push({ number: i, tdb: calculateTdB(i) });
+            
+            // Shuffle
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            
+            console.log('startNewRound - host created and shuffled deck, total cards:', deck.length);
+
+            // Deal cards (only host generates and distributes)
             const hands = [];
             for (let p = 0; p < players.length; p++) {
                 hands[p] = [];
@@ -1799,22 +1803,30 @@
             });
             boardRows = initialRows;
             console.log('Host myPlayerIndex:', myPlayerIndex, 'my hand:', players[myPlayerIndex]?.hand?.length);
-        }
-
-        currentTurn = 1;
-        gameState = "SELECT";
-        updateUI();
-        setStatus("Sua vez - escolha uma carta", "action");
-        
-        // Iniciar timer de jogada do jogador
-        startPlayerTurnTimer();
-        
-        // Iniciar verificação periódica de estado (anti-travamento)
-        startStateCheckInterval();
-        
-        // IMPORTANTE: Fazer bots jogarem automaticamente no início da rodada
-        if (isHost) {
+            
+            // Host define estado e inicia jogo
+            currentTurn = 1;
+            gameState = "SELECT";
+            updateUI();
+            setStatus("Sua vez - escolha uma carta", "action");
+            
+            // Iniciar timer de jogada do jogador
+            startPlayerTurnTimer();
+            
+            // Iniciar verificação periódica de estado (anti-travamento)
+            startStateCheckInterval();
+            
+            // IMPORTANTE: Fazer bots jogarem automaticamente no início da rodada
             setTimeout(() => triggerBotPlays(), 1000);
+        } else {
+            // Jogador não-host: aguardar GAME_STATE_SYNC do host
+            console.log('startNewRound - non-host waiting for GAME_STATE_SYNC');
+            gameState = "WAITING";
+            setStatus("Aguardando distribuição de cartas...", "info");
+            updateUI();
+            
+            // Iniciar verificação periódica de estado (anti-travamento)
+            startStateCheckInterval();
         }
     }
 
