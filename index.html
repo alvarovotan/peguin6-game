@@ -1962,6 +1962,7 @@
         }
         
         if (state.boardRows) {
+            console.log('syncGameState - received boardRows:', state.boardRows.map(r => r.map(c => c.number)));
             boardRows = state.boardRows;
         }
         
@@ -2348,7 +2349,14 @@
     let currentCardIndex = 0; // Índice da carta atual sendo processada
     
     function processRound() {
-        console.log('processRound - processing cards');
+        console.log('processRound - processing cards, isHost:', isHost);
+        
+        // IMPORTANTE: Apenas o host deve processar as cartas
+        // Jogadores não-host recebem os resultados via CARD_PLACED
+        if (!isHost) {
+            console.warn('processRound - called on non-host, ignoring!');
+            return;
+        }
         
         // Parar timer de recuperação - estamos processando
         stopWaitingRecoveryTimer();
@@ -2422,6 +2430,13 @@
     // Retorna true se o jogador precisa escolher uma fileira (humano), false caso contrário
     function placeCardOnBoard(playerIndex, card) {
         console.log('placeCardOnBoard - player:', playerIndex, 'card:', card.number);
+        console.log('placeCardOnBoard - boardRows state:');
+        
+        // Verificar se boardRows está válido
+        if (!boardRows || boardRows.length !== ROW_COUNT) {
+            console.error('placeCardOnBoard - boardRows is invalid!', boardRows);
+            return false;
+        }
         
         // Encontrar a fileira correta (maior carta menor que a jogada)
         let bestRow = -1;
@@ -2429,13 +2444,23 @@
         
         for (let i = 0; i < ROW_COUNT; i++) {
             const row = boardRows[i];
+            
+            // Verificar se a fileira está válida e tem cartas
+            if (!row || row.length === 0) {
+                console.warn('placeCardOnBoard - row', i, 'is empty or invalid!');
+                continue;
+            }
+            
             const lastCard = row[row.length - 1].number;
+            console.log('placeCardOnBoard - row', i, 'lastCard:', lastCard, 'card:', card.number, 'comparison:', lastCard < card.number);
             
             if (lastCard < card.number && lastCard > bestLastCard) {
                 bestRow = i;
                 bestLastCard = lastCard;
             }
         }
+        
+        console.log('placeCardOnBoard - bestRow:', bestRow, 'bestLastCard:', bestLastCard);
         
         if (bestRow === -1) {
             // Carta é menor que todas as últimas - jogador deve escolher uma fileira
@@ -2892,7 +2917,20 @@
                 const allPlayed = players.every(p => p.lastPlayed !== null);
                 if (allPlayed) {
                     console.warn('stateCheckInterval - ANOMALIA DETECTADA: Todos jogaram mas ainda em WAITING');
-                    processRound();
+                    console.log('stateCheckInterval - host calling checkAllPlayersPlayed instead of processRound directly');
+                    checkAllPlayersPlayed();
+                }
+            } else if (!isHost && gameState === "WAITING") {
+                // Jogador não-host: apenas solicitar sync do host se todos parecem ter jogado
+                const allPlayed = players.every(p => p.lastPlayed !== null);
+                if (allPlayed) {
+                    console.warn('stateCheckInterval - non-host: all played but still WAITING, requesting sync');
+                    ws.send(JSON.stringify({
+                        type: 'GAME_ACTION',
+                        payload: {
+                            action: 'REQUEST_SYNC'
+                        }
+                    }));
                 }
             }
             
