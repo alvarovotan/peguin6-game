@@ -2628,8 +2628,17 @@
         // Verificar se alguem atingiu 66 pontos
         const someoneReached66 = players.some(p => p.score >= 66);
         
-        // O jogo só acaba quando a mão termina E alguem tem 66+ pontos
-        if (handEnded && someoneReached66) {
+        // Verificar se há cartas suficientes no deck para uma nova rodada
+        const cardsNeededForNewRound = players.length * 10 + 4;
+        const canStartNewRound = deck.length >= cardsNeededForNewRound;
+        
+        console.log('finishTurn - handEnded:', handEnded, 'someoneReached66:', someoneReached66, 'deckSize:', deck.length, 'canStartNewRound:', canStartNewRound);
+        
+        // CORREÇÃO: O jogo acaba quando:
+        // 1. A mão termina E alguém tem 66+ pontos, OU
+        // 2. A mão termina E não há cartas suficientes no deck para nova rodada
+        if (handEnded && (someoneReached66 || !canStartNewRound)) {
+            console.log('finishTurn - GAME OVER! someoneReached66:', someoneReached66, 'canStartNewRound:', canStartNewRound);
             gameState = "END";
             const winner = players.reduce((a, b) => a.score < b.score ? a : b);
             
@@ -2648,56 +2657,77 @@
                     ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
                 }
             }));
-        } else {
-            // Distribuir novas cartas se a mão acabou
-            if (handEnded && isHost) {
-                console.log('finishTurn - hand ended, distributing new cards');
-                distributeNewCards();
+            updateUI();
+            return; // Sair da função após fim de jogo
+        }
+        
+        // Distribuir novas cartas se a mão acabou
+        if (handEnded && isHost) {
+            console.log('finishTurn - hand ended, distributing new cards');
+            const distributed = distributeNewCards();
+            if (distributed) {
                 // NÃO enviar TURN_END aqui - distributeNewCards já envia GAME_STATE_SYNC
                 // que atualiza todos os jogadores com as novas cartas
                 return; // Sair da função - distributeNewCards cuida de tudo
-            }
-            
-            // Se não é host e a mão acabou, aguardar distribuição do host
-            if (handEnded && !isHost) {
-                console.log('finishTurn - hand ended, waiting for host to distribute');
-                gameState = "WAITING";
-                setStatus("Aguardando distribuição de novas cartas...", "info");
-                // Iniciar timeout de segurança para recuperação
-                startWaitingRecoveryTimer();
+            } else {
+                // Se não conseguiu distribuir, forçar fim de jogo
+                console.log('finishTurn - could not distribute cards, forcing game over');
+                gameState = "END";
+                const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+                const ranking = [...players].sort((a, b) => a.score - b.score);
+                showGameOverScreen(winner, ranking);
+                ws.send(JSON.stringify({
+                    type: 'GAME_ACTION',
+                    payload: {
+                        action: 'GAME_OVER',
+                        winner: winner.name,
+                        ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                    }
+                }));
                 updateUI();
                 return;
             }
-            
-            // Verificar se o jogador tem cartas na mão antes de pedir escolha
-            const myHand = players[myPlayerIndex]?.hand || [];
-            
-            if (myHand.length > 0) {
-                gameState = "SELECT";
-                setStatus("Sua vez - escolha uma carta", "action");
-                // Iniciar timer de jogada do jogador
-                startPlayerTurnTimer();
-            } else {
-                // Se não tem cartas, aguardar distribuição ou fim de jogo
-                gameState = "WAITING";
-                setStatus("Aguardando distribuição de novas cartas...", "info");
-                // Iniciar timeout de segurança
-                startWaitingRecoveryTimer();
+        }
+        
+        // Se não é host e a mão acabou, aguardar distribuição do host
+        if (handEnded && !isHost) {
+            console.log('finishTurn - hand ended, waiting for host to distribute');
+            gameState = "WAITING";
+            setStatus("Aguardando distribuição de novas cartas...", "info");
+            // Iniciar timeout de segurança para recuperação
+            startWaitingRecoveryTimer();
+            updateUI();
+            return;
+        }
+        
+        // Verificar se o jogador tem cartas na mão antes de pedir escolha
+        const myHand = players[myPlayerIndex]?.hand || [];
+        
+        if (myHand.length > 0) {
+            gameState = "SELECT";
+            setStatus("Sua vez - escolha uma carta", "action");
+            // Iniciar timer de jogada do jogador
+            startPlayerTurnTimer();
+        } else {
+            // Se não tem cartas, aguardar distribuição ou fim de jogo
+            gameState = "WAITING";
+            setStatus("Aguardando distribuição de novas cartas...", "info");
+            // Iniciar timeout de segurança
+            startWaitingRecoveryTimer();
+        }
+        
+        // Broadcast para outros jogadores
+        ws.send(JSON.stringify({
+            type: 'GAME_ACTION',
+            payload: {
+                action: 'TURN_END'
             }
-            
-            // Broadcast para outros jogadores
-            ws.send(JSON.stringify({
-                type: 'GAME_ACTION',
-                payload: {
-                    action: 'TURN_END'
-                }
-            }));
-            
-            // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
-            // Aguardar um pouco mais para garantir que o estado foi atualizado
-            if (isHost) {
-                setTimeout(() => triggerBotPlays(), 1000);
-            }
+        }));
+        
+        // IMPORTANTE: Fazer bots jogarem automaticamente no próximo turno
+        // Aguardar um pouco mais para garantir que o estado foi atualizado
+        if (isHost) {
+            setTimeout(() => triggerBotPlays(), 1000);
         }
         
         updateUI();
@@ -2739,15 +2769,25 @@
     }
     
     // Distribuir novas cartas para jogadores que ficaram sem
+    // Retorna true se conseguiu distribuir, false caso contrário
     function distributeNewCards() {
         console.log('distributeNewCards - deck remaining:', deck.length);
         
         // Verificar se todos os jogadores esgotaram suas cartas
         const allEmpty = players.every(p => p.hand.length === 0);
         
-        if (!allEmpty || deck.length < players.length * 10 + 4) {
-            console.log('Not all players empty or not enough cards in deck');
-            return;
+        // Verificar se há cartas suficientes no deck
+        const cardsNeeded = players.length * 10 + 4;
+        
+        if (!allEmpty) {
+            console.log('distributeNewCards - not all players empty');
+            return false;
+        }
+        
+        if (deck.length < cardsNeeded) {
+            console.log('distributeNewCards - not enough cards in deck:', deck.length, 'needed:', cardsNeeded);
+            // NÃO há cartas suficientes - retornar false para que finishTurn finalize o jogo
+            return false;
         }
         
         console.log('Starting new round - all players had 0 cards');
@@ -2774,6 +2814,13 @@
             }
         }
         
+        // Ordenar as fileiras pela carta inicial (menor para maior)
+        boardRows.sort((a, b) => {
+            if (a.length === 0) return 1;
+            if (b.length === 0) return -1;
+            return a[0].number - b[0].number;
+        });
+        
         console.log('New round started - cards distributed, deck remaining:', deck.length);
         
         // Enviar novo estado do jogo
@@ -2796,6 +2843,8 @@
         
         // Fazer bots jogarem
         setTimeout(() => triggerBotPlays(), 1000);
+        
+        return true; // Distribuição bem-sucedida
     }
 
     // Função para iniciar o timer de jogada do jogador
@@ -2869,28 +2918,77 @@
     }
     
     // Função para iniciar timer de recuperação quando em estado WAITING
+    let waitingRecoveryAttempts = 0;
+    const MAX_WAITING_RECOVERY_ATTEMPTS = 3;
+    
     function startWaitingRecoveryTimer() {
         // Limpar timer anterior se existir
         if (waitingRecoveryTimer) {
             clearTimeout(waitingRecoveryTimer);
         }
         
-        console.log('startWaitingRecoveryTimer - iniciando timer de recuperação de 10 segundos');
+        console.log('startWaitingRecoveryTimer - iniciando timer de recuperação de 5 segundos (tentativa', waitingRecoveryAttempts + 1, ')');
         
         waitingRecoveryTimer = setTimeout(() => {
             console.log('startWaitingRecoveryTimer - timeout atingido, verificando estado');
             console.log('startWaitingRecoveryTimer - gameState:', gameState, 'myHand:', players[myPlayerIndex]?.hand?.length);
             
-            // Se ainda estamos em WAITING mas temos cartas, forçar SELECT
-            const myHand = players[myPlayerIndex]?.hand || [];
+            // Se não estamos mais em WAITING, resetar contador e sair
+            if (gameState !== "WAITING") {
+                waitingRecoveryAttempts = 0;
+                return;
+            }
             
-            if (gameState === "WAITING" && myHand.length > 0) {
+            const myHand = players[myPlayerIndex]?.hand || [];
+            const myPlayer = players[myPlayerIndex];
+            
+            // Se temos cartas mas estamos em WAITING, forçar SELECT
+            if (myHand.length > 0 && myPlayer && !myPlayer.lastPlayed) {
                 console.warn('startWaitingRecoveryTimer - RECUPERAÇÃO: Temos cartas mas estamos em WAITING, forçando SELECT');
+                waitingRecoveryAttempts = 0;
                 gameState = "SELECT";
                 setStatus("Sua vez - escolha uma carta", "action");
                 startPlayerTurnTimer();
                 updateUI();
-            } else if (gameState === "WAITING" && myHand.length === 0) {
+                return;
+            }
+            
+            // Se não temos cartas, verificar se o jogo deveria ter terminado
+            if (myHand.length === 0) {
+                waitingRecoveryAttempts++;
+                
+                // Verificar se todos os jogadores estão sem cartas
+                const allEmpty = players.every(p => p.hand.length === 0);
+                
+                if (allEmpty) {
+                    console.log('startWaitingRecoveryTimer - todos sem cartas, verificando se jogo deveria terminar');
+                    
+                    // Se já tentamos várias vezes, forçar fim de jogo
+                    if (waitingRecoveryAttempts >= MAX_WAITING_RECOVERY_ATTEMPTS) {
+                        console.warn('startWaitingRecoveryTimer - MÁXIMO DE TENTATIVAS ATINGIDO, forçando fim de jogo');
+                        waitingRecoveryAttempts = 0;
+                        
+                        // Forçar fim de jogo localmente
+                        gameState = "END";
+                        const winner = players.reduce((a, b) => a.score < b.score ? a : b);
+                        const ranking = [...players].sort((a, b) => a.score - b.score);
+                        showGameOverScreen(winner, ranking);
+                        
+                        // Se for host, broadcast para todos
+                        if (isHost) {
+                            ws.send(JSON.stringify({
+                                type: 'GAME_ACTION',
+                                payload: {
+                                    action: 'GAME_OVER',
+                                    winner: winner.name,
+                                    ranking: ranking.map(p => ({ name: p.name, score: p.score, isBot: p.isBot }))
+                                }
+                            }));
+                        }
+                        return;
+                    }
+                }
+                
                 console.log('startWaitingRecoveryTimer - ainda sem cartas, solicitando sync do host');
                 // Solicitar sincronização do host
                 ws.send(JSON.stringify({
@@ -2902,7 +3000,7 @@
                 // Reiniciar timer para tentar novamente
                 startWaitingRecoveryTimer();
             }
-        }, 10000); // 10 segundos
+        }, 5000); // 5 segundos (reduzido de 10 para recuperação mais rápida)
     }
     
     // Função para parar timer de recuperação
