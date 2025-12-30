@@ -1407,6 +1407,8 @@
     let selectedRowIndex = null; // Índice da fileira selecionada para compra
     let chooseRowTimer = null; // Timer para escolha de fileira
     let chooseRowTimeLeft = 30; // Segundos restantes para escolher
+    let playerTurnTimer = null; // Timer para jogada do jogador
+    let playerTurnTimeLeft = 30; // Segundos para o jogador jogar
 
     // --- WebSocket Connection ---
     function connectWebSocket() {
@@ -1802,6 +1804,9 @@
         updateUI();
         setStatus("Sua vez - escolha uma carta", "action");
         
+        // Iniciar timer de jogada do jogador
+        startPlayerTurnTimer();
+        
         // IMPORTANTE: Fazer bots jogarem automaticamente no início da rodada
         if (isHost) {
             setTimeout(() => triggerBotPlays(), 1000);
@@ -1964,28 +1969,47 @@
         // Verificar se o jogador tem cartas na mão antes de pedir escolha
         const myHand = players[myPlayerIndex]?.hand || [];
         
-        if (myHand.length > 0) {
-            gameState = "SELECT";
-            setStatus("Sua vez - escolha uma carta", "action");
-        } else {
-            gameState = "WAITING";
-            setStatus("Aguardando distribuição de novas cartas...", "info");
+            if (myHand.length > 0) {
+                gameState = "SELECT";
+                setStatus("Sua vez - escolha uma carta", "action");
+                // Iniciar timer de jogada do jogador
+                startPlayerTurnTimer();
+            } else {
+                gameState = "WAITING";
+                setStatus("Aguardando distribuição de novas cartas...", "info");
+            }
+            
+            updateUI();
+            
+            // Fazer bots jogarem automaticamente (apenas o host controla os bots)
+            if (isHost) {
+                setTimeout(() => triggerBotPlays(), 1000);
+            }
         }
-        
-        updateUI();
-        
-        // Fazer bots jogarem automaticamente (apenas o host controla os bots)
-        if (isHost) {
-            setTimeout(() => triggerBotPlays(), 800);
-        }
-    }
 
     function handleCardClick(cardIndex) {
-        if (gameState !== "SELECT") return;
-        if (myPlayerIndex === -1) return;
+        console.log('handleCardClick - cardIndex:', cardIndex, 'gameState:', gameState, 'myPlayerIndex:', myPlayerIndex);
+        
+        // Limpar timer de jogada
+        if (playerTurnTimer) {
+            clearTimeout(playerTurnTimer);
+            playerTurnTimer = null;
+        }
+        
+        if (gameState !== "SELECT") {
+            console.log('handleCardClick - blocked: gameState is not SELECT');
+            return;
+        }
+        if (myPlayerIndex === -1) {
+            console.log('handleCardClick - blocked: myPlayerIndex is -1');
+            return;
+        }
 
         const player = players[myPlayerIndex];
-        if (!player || cardIndex >= player.hand.length) return;
+        if (!player || cardIndex >= player.hand.length) {
+            console.log('handleCardClick - blocked: invalid player or cardIndex');
+            return;
+        }
 
         const chosenCard = player.hand[cardIndex];
         
@@ -2083,6 +2107,8 @@
             if (myHand.length > 0) {
                 gameState = "SELECT";
                 setStatus("Sua vez - escolha uma carta", "action");
+                // Iniciar timer de jogada do jogador
+                startPlayerTurnTimer();
             } else {
                 gameState = "WAITING";
                 setStatus("Aguardando distribuição de novas cartas...", "info");
@@ -2167,6 +2193,22 @@
                 console.log('checkAllPlayersPlayed - triggering bot plays again in 800ms');
                 setTimeout(() => triggerBotPlays(), 800);
             } else {
+                // Verificar se o jogador humano ainda não jogou e deveria estar em SELECT
+                const humanPlayer = players[myPlayerIndex];
+                if (humanPlayer && !humanPlayer.isBot && !humanPlayer.lastPlayed && humanPlayer.hand && humanPlayer.hand.length > 0) {
+                    console.log('checkAllPlayersPlayed - human player has not played yet, checking gameState');
+                    console.log('checkAllPlayersPlayed - current gameState:', gameState);
+                    
+                    // Se o gameState não é SELECT, forçar sincronização
+                    if (gameState !== "SELECT") {
+                        console.warn('checkAllPlayersPlayed - DESYNCHRONIZATION DETECTED! Forcing gameState to SELECT');
+                        gameState = "SELECT";
+                        setStatus("Sua vez - escolha uma carta", "action");
+                        updateUI();
+                        // Reiniciar timer de jogada
+                        startPlayerTurnTimer();
+                    }
+                }
                 // Resetar contador se não há mais bots para jogar
                 checkAllPlayersPlayedCalls = 0;
             }
@@ -2422,6 +2464,8 @@
             if (myHand.length > 0) {
                 gameState = "SELECT";
                 setStatus("Sua vez - escolha uma carta", "action");
+                // Iniciar timer de jogada do jogador
+                startPlayerTurnTimer();
             } else {
                 // Se não tem cartas, aguardar distribuição ou fim de jogo
                 gameState = "WAITING";
@@ -2532,6 +2576,29 @@
         }));
     }
 
+    // Função para iniciar o timer de jogada do jogador
+    function startPlayerTurnTimer() {
+        // Limpar timer anterior se existir
+        if (playerTurnTimer) {
+            clearTimeout(playerTurnTimer);
+        }
+        
+        console.log('startPlayerTurnTimer - iniciando timer de 30 segundos');
+        playerTurnTimeLeft = 30;
+        
+        playerTurnTimer = setTimeout(() => {
+            console.log('startPlayerTurnTimer - tempo esgotado, forçando jogada automática');
+            // Tempo esgotado - forçar jogada automática da primeira carta
+            if (gameState === "SELECT" && myPlayerIndex !== -1) {
+                const player = players[myPlayerIndex];
+                if (player && player.hand && player.hand.length > 0) {
+                    console.log('startPlayerTurnTimer - jogando carta 0 automaticamente');
+                    handleCardClick(0);
+                }
+            }
+        }, 30000); // 30 segundos
+    }
+    
     // Função para iniciar o timer de escolha de fileira
     function startChooseRowTimer() {
         // Limpar timer anterior se existir
