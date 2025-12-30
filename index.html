@@ -1998,7 +1998,7 @@
         }
         
         if (gameState !== "SELECT") {
-            console.log('handleCardClick - blocked: gameState is not SELECT');
+            console.log('handleCardClick - blocked: gameState is not SELECT, current:', gameState);
             return;
         }
         if (myPlayerIndex === -1) {
@@ -2009,6 +2009,12 @@
         const player = players[myPlayerIndex];
         if (!player || cardIndex >= player.hand.length) {
             console.log('handleCardClick - blocked: invalid player or cardIndex');
+            return;
+        }
+        
+        // Verificar se já jogou nesta rodada
+        if (player.lastPlayed !== null) {
+            console.warn('handleCardClick - blocked: player already played this round, lastPlayed:', player.lastPlayed.number);
             return;
         }
 
@@ -2041,19 +2047,55 @@
     }
 
     function handleGameUpdate(payload) {
+        console.log('handleGameUpdate - action:', payload.action, 'fromPlayerId:', payload.fromPlayerId, 'isHost:', isHost);
+        
         if (payload.action === 'PLAY_CARD') {
             const player = players.find(p => p.id === payload.fromPlayerId);
+            console.log('handleGameUpdate PLAY_CARD - player found:', !!player, 'card:', payload.card?.number);
+            
             if (player && payload.card) {
                 const cardIndex = player.hand.findIndex(c => c.number === payload.card.number);
+                console.log('handleGameUpdate PLAY_CARD - cardIndex in hand:', cardIndex);
+                
                 if (cardIndex !== -1) {
                     player.hand.splice(cardIndex, 1);
                 }
                 player.lastPlayed = payload.card;
+                console.log('handleGameUpdate PLAY_CARD - updated player:', player.name, 'lastPlayed:', player.lastPlayed.number);
                 updateUI();
                 
                 // Verificar se todos jogaram (apenas o host processa)
                 if (isHost) {
-                    checkAllPlayersPlayed();
+                    console.log('handleGameUpdate PLAY_CARD - host checking if all played');
+                    setTimeout(() => checkAllPlayersPlayed(), 500);
+                } else {
+                    // Jogadores não-host também precisam verificar localmente
+                    console.log('handleGameUpdate PLAY_CARD - non-host checking local state');
+                    const allPlayed = players.every(p => p.lastPlayed !== null);
+                    console.log('handleGameUpdate PLAY_CARD - all players played?', allPlayed);
+                    
+                    if (allPlayed) {
+                        console.log('handleGameUpdate PLAY_CARD - all played, waiting for host to process');
+                        // Todos jogaram, aguardar o host processar
+                        // Adicionar timeout de segurança caso o host não processe
+                        setTimeout(() => {
+                            if (gameState === "WAITING") {
+                                console.warn('handleGameUpdate PLAY_CARD - timeout waiting for host, forcing check');
+                                // Forçar verificação local
+                                const stillAllPlayed = players.every(p => p.lastPlayed !== null);
+                                if (stillAllPlayed) {
+                                    console.error('handleGameUpdate PLAY_CARD - DESYNC DETECTED! Host did not process. Requesting sync.');
+                                    // Solicitar sincronização do host
+                                    ws.send(JSON.stringify({
+                                        type: 'GAME_ACTION',
+                                        payload: {
+                                            action: 'REQUEST_SYNC'
+                                        }
+                                    }));
+                                }
+                            }
+                        }, 5000); // 5 segundos de timeout
+                    }
                 }
             }
         } else if (payload.action === 'CARD_PLACED') {
@@ -2120,6 +2162,20 @@
             // Fazer bots jogarem automaticamente (apenas o host controla os bots)
             if (isHost) {
                 setTimeout(() => triggerBotPlays(), 800);
+            }
+        } else if (payload.action === 'ROUND_PROCESSING') {
+            console.log('ROUND_PROCESSING - host is processing round, updating local state');
+            // Host está processando o round, garantir que estamos em estado de espera
+            if (gameState === "WAITING") {
+                setStatus("Processando rodada...", "info");
+                updateUI();
+            }
+        } else if (payload.action === 'REQUEST_SYNC') {
+            console.log('REQUEST_SYNC received from player');
+            if (isHost) {
+                console.log('REQUEST_SYNC - host forcing checkAllPlayersPlayed');
+                // Host força verificação e sincronização
+                checkAllPlayersPlayed();
             }
         } else if (payload.action === 'RESTART_REQUEST') {
             if (confirm(`O jogador ${payload.fromPlayerName} deseja reiniciar o jogo. Você aceita?`)) {
@@ -2236,6 +2292,17 @@
         
         currentCardIndex = 0;
         pendingRowSelections = 0;
+        
+        // Broadcast para todos que o processamento começou
+        if (isHost) {
+            console.log('processRound - broadcasting ROUND_PROCESSING to all players');
+            ws.send(JSON.stringify({
+                type: 'GAME_ACTION',
+                payload: {
+                    action: 'ROUND_PROCESSING'
+                }
+            }));
+        }
         
         // Processar a primeira carta
         processNextCard();
