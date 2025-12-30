@@ -287,11 +287,11 @@
         /* --- Responsividade Mobile --- */
         @media (max-width: 768px) {
             :root {
-                --card-w: 30px;
-                --card-h: 46px;
+                --card-w: 24px;
+                --card-h: 36px;
                 --row-gap: 2px;
-                --row-h: 56px;
-                --row-padding: 3px;
+                --row-h: 44px;
+                --row-padding: 2px;
             }
             
             body {
@@ -345,9 +345,14 @@
                 display: none !important;
             }
             
-            /* Mostrar botão flutuante de placar no mobile */
+            /* Mostrar placar inline no mobile */
+            .mobile-inline-placar {
+                display: block !important;
+            }
+            
+            /* Ocultar botão flutuante de placar no mobile */
             .mobile-placar-btn {
-                display: block;
+                display: none !important;
             }
             
             .scoreboard-title {
@@ -367,15 +372,13 @@
             
             /* Ajustar layout do jogo para ocupar toda a tela */
             .main-layout {
-                padding-bottom: 80px; /* Espaço para o botão flutuante */
+                padding-bottom: 20px;
             }
             
             .board {
-                padding: 6px;
+                padding: 4px;
                 width: 100%;
                 overflow-x: auto;
-                max-height: 60vh;
-                overflow-y: auto;
             }
             
             .row {
@@ -384,13 +387,13 @@
             }
             
             .row-wrapper {
-                gap: 6px;
-                margin-bottom: 4px;
+                gap: 4px;
+                margin-bottom: 3px;
             }
             
             .radio-label {
-                width: 20px;
-                height: 20px;
+                width: 16px;
+                height: 16px;
                 border-width: 2px;
             }
             
@@ -457,10 +460,10 @@
         /* --- Responsividade Mobile Pequeno --- */
         @media (max-width: 480px) {
             :root {
-                --card-w: 26px;
-                --card-h: 40px;
-                --row-gap: 2px;
-                --row-h: 50px;
+                --card-w: 22px;
+                --card-h: 34px;
+                --row-gap: 1px;
+                --row-h: 40px;
                 --row-padding: 2px;
             }
             
@@ -497,14 +500,14 @@
             }
             
             .radio-label {
-                width: 18px;
-                height: 18px;
+                width: 14px;
+                height: 14px;
                 border-width: 2px;
             }
             
             .row-radio:checked + .radio-label::after {
-                width: 6px;
-                height: 6px;
+                width: 5px;
+                height: 5px;
             }
             
             header h1 {
@@ -1031,6 +1034,15 @@
                 <div class="player-area">
                     <div style="margin-bottom:5px; color:var(--text-secondary); font-size:0.8rem; text-align:center;">SUA MÃO</div>
                     <div class="hand" id="player-hand"></div>
+                </div>
+                
+                <!-- Placar inline para mobile (abaixo da mão) -->
+                <div class="mobile-inline-placar" id="mobile-inline-placar" style="display: none;">
+                    <div style="margin: 20px 0 10px; padding: 10px; background: var(--sidebar-color); border-radius: 8px;">
+                        <div style="font-size: 1rem; font-weight: bold; color: var(--accent-color); text-align: center; margin-bottom: 10px;">PLACAR</div>
+                        <div id="mobile-inline-scoreboard-list"></div>
+                        <div style="margin-top: 10px; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">Rodada: <span id="mobile-inline-round-num">1</span></div>
+                    </div>
                 </div>
             </div>
 
@@ -2630,6 +2642,36 @@
         const mobileRoundNum = document.getElementById("mobile-round-num");
         if (mobileRoundNum) {
             mobileRoundNum.textContent = currentTurn;
+        }
+        
+        // Atualizar placar inline mobile (abaixo da mão)
+        const mobileInlineSbList = document.getElementById("mobile-inline-scoreboard-list");
+        if (mobileInlineSbList) {
+            mobileInlineSbList.innerHTML = "";
+            let sortedPlayers = [...players].sort((a,b) => a.score - b.score);
+            
+            sortedPlayers.forEach((p, idx) => {
+                const entry = document.createElement("div");
+                entry.className = "score-entry";
+                if (idx === 0 && p.score < SCORE_LIMIT) entry.classList.add("leader"); 
+                if (p.score >= SCORE_LIMIT) entry.classList.add("danger");
+                if (p.id === playerId) entry.classList.add("human");
+                
+                let skull = p.score >= SCORE_LIMIT ? "💀" : "";
+                let botIcon = p.isBot ? " 🤖" : "";
+                
+                entry.innerHTML = `
+                    <span class="score-name">${p.name}${botIcon}</span>
+                    <span class="score-val">${p.score} ${skull}</span>
+                `;
+                mobileInlineSbList.appendChild(entry);
+            });
+        }
+        
+        // Atualizar número da rodada no placar inline mobile
+        const mobileInlineRoundNum = document.getElementById("mobile-inline-round-num");
+        if (mobileInlineRoundNum) {
+            mobileInlineRoundNum.textContent = currentTurn;
         }
         
         updateBotsActionArea();
