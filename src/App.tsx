@@ -145,6 +145,7 @@ const App: React.FC = () => {
             setPlayerId(data.payload.playerId);
             setRoomCode(data.payload.roomId);
             setIsHost(false);
+            setView('LOBBY');
             playSound('select', isMuted);
             break;
             
@@ -220,8 +221,12 @@ const App: React.FC = () => {
   };
 
   const handleCreateRoom = () => {
+    if (!playerName.trim()) {
+      setErrorMessage('Digite seu nome primeiro');
+      return;
+    }
     playSound('select', isMuted);
-    sendMessage('CREATE_ROOM', { playerName });
+    sendMessage('CREATE_ROOM', { playerName: playerName.trim() });
   };
 
   const handleJoinRoom = () => {
@@ -229,9 +234,13 @@ const App: React.FC = () => {
       setErrorMessage('Código inválido');
       return;
     }
+    if (!playerName.trim()) {
+      setErrorMessage('Digite seu nome primeiro');
+      return;
+    }
     playSound('select', isMuted);
-    sendMessage('JOIN_ROOM', { roomId: inputCode.toUpperCase(), playerName });
-    setView('LOBBY');
+    sendMessage('JOIN_ROOM', { roomId: inputCode.toUpperCase(), playerName: playerName.trim() });
+    // View será mudada quando receber JOIN_CONFIRMED
   };
 
   const addBot = () => {
