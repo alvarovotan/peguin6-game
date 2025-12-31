@@ -3,22 +3,49 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Servidor HTTP para servir o arquivo HTML
+// Servidor HTTP para servir arquivos estáticos do build
 const httpServer = http.createServer((req, res) => {
-    if (req.url === '/' || req.url === '/index.html') {
-        fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
-            if (err) {
-                res.writeHead(500);
-                res.end('Erro ao ler arquivo');
-                return;
-            }
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(data);
-        });
-    } else {
-        res.writeHead(404);
-        res.end('Not found');
+    // Determinar o caminho do arquivo
+    let filePath = path.join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url);
+    
+    // Se o arquivo não existir, servir index.html (para SPA routing)
+    if (!fs.existsSync(filePath)) {
+        filePath = path.join(__dirname, 'dist', 'index.html');
     }
+
+    // Determinar o tipo de conteúdo
+    const extname = path.extname(filePath);
+    let contentType = 'text/html';
+    
+    const mimeTypes = {
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon'
+    };
+    
+    contentType = mimeTypes[extname] || 'application/octet-stream';
+
+    // Ler e servir o arquivo
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            if (err.code === 'ENOENT') {
+                res.writeHead(404);
+                res.end('404 - Arquivo não encontrado');
+            } else {
+                res.writeHead(500);
+                res.end('Erro no servidor: ' + err.code);
+            }
+        } else {
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(data);
+        }
+    });
 });
 
 // Servidor WebSocket
