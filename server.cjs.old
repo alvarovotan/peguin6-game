@@ -3,52 +3,29 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Verificar se o diretório dist existe
 const distPath = path.join(__dirname, 'dist');
 if (!fs.existsSync(distPath)) {
     console.error('ERRO: Diretório dist não encontrado!');
-    console.error('Execute "npm run build" antes de iniciar o servidor.');
     process.exit(1);
 }
 
-// Servidor HTTP para servir arquivos estáticos do build
 const httpServer = http.createServer((req, res) => {
-    // Determinar o caminho do arquivo
     let filePath = path.join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url);
-    
-    // Se o arquivo não existir, servir index.html (para SPA routing)
-    if (!fs.existsSync(filePath)) {
-        filePath = path.join(__dirname, 'dist', 'index.html');
-    }
+    if (!fs.existsSync(filePath)) filePath = path.join(__dirname, 'dist', 'index.html');
 
-    // Determinar o tipo de conteúdo
     const extname = path.extname(filePath);
-    let contentType = 'text/html';
-    
     const mimeTypes = {
-        '.html': 'text/html',
-        '.js': 'text/javascript',
-        '.css': 'text/css',
-        '.json': 'application/json',
-        '.png': 'image/png',
-        '.jpg': 'image/jpg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
-        '.ico': 'image/x-icon'
+        '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+        '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpg',
+        '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
     };
     
-    contentType = mimeTypes[extname] || 'application/octet-stream';
+    const contentType = mimeTypes[extname] || 'application/octet-stream';
 
-    // Ler e servir o arquivo
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            if (err.code === 'ENOENT') {
-                res.writeHead(404);
-                res.end('404 - Arquivo não encontrado');
-            } else {
-                res.writeHead(500);
-                res.end('Erro no servidor: ' + err.code);
-            }
+            res.writeHead(err.code === 'ENOENT' ? 404 : 500);
+            res.end(err.code === 'ENOENT' ? '404' : 'Erro');
         } else {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(data);
@@ -56,17 +33,19 @@ const httpServer = http.createServer((req, res) => {
     });
 });
 
-// Servidor WebSocket
 const wss = new WebSocket.Server({ server: httpServer, path: '/ws' });
-
-const rooms = new Map(); // roomId -> { players: [], gameState: {} }
+const rooms = new Map();
 
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function generatePlayerId() {
+    return Math.random().toString(36).substring(2, 15);
+}
+
 wss.on('connection', (ws) => {
-    console.log('Nova conexão WebSocket');
+    console.log('Nova conexão');
     let playerId = null;
     let roomId = null;
 
@@ -78,26 +57,23 @@ wss.on('connection', (ws) => {
             switch (type) {
                 case 'CREATE_ROOM':
                     roomId = generateRoomId();
-                    playerId = payload.playerId || Math.random().toString(36).substring(2, 15);
-                    const playerName = payload.playerName || 'Jogador';
+                    playerId = generatePlayerId();
                     
                     rooms.set(roomId, {
-                        players: [{ id: playerId, name: playerName, ws: ws }],
-                        gameState: null,
+                        players: [{ id: playerId, name: payload.playerName, ws, isBot: false, score: 0 }],
                         hostId: playerId
                     });
 
-                    console.log(`Sala criada: ${roomId} por ${playerName}`);
+                    console.log(`Sala ${roomId} criada por ${payload.playerName}`);
                     ws.send(JSON.stringify({
                         type: 'ROOM_CREATED',
-                        payload: { roomId, playerId, playerName }
+                        payload: { roomId, playerId, playerName: payload.playerName }
                     }));
                     break;
 
                 case 'JOIN_ROOM':
                     roomId = payload.roomId;
-                    playerId = payload.playerId || Math.random().toString(36).substring(2, 15);
-                    const joinPlayerName = payload.playerName || 'Jogador';
+                    playerId = generatePlayerId();
 
                     if (!rooms.has(roomId)) {
                         ws.send(JSON.stringify({
@@ -111,22 +87,18 @@ wss.on('connection', (ws) => {
                     if (room.players.length >= 10) {
                         ws.send(JSON.stringify({
                             type: 'ERROR',
-                            payload: { message: 'Sala cheia (máximo 10 jogadores)' }
+                            payload: { message: 'Sala cheia' }
                         }));
                         return;
                     }
 
-                    room.players.push({ id: playerId, name: joinPlayerName, ws: ws });
-                    console.log(`${joinPlayerName} entrou na sala ${roomId}`);
-
-                    // Enviar confirmação para o jogador que entrou com seu playerId
+                    room.players.push({ id: playerId, name: payload.playerName, ws, isBot: false, score: 0 });
+                    
+                    console.log(`${payload.playerName} entrou na sala ${roomId}`);
+                    
                     ws.send(JSON.stringify({
                         type: 'JOIN_CONFIRMED',
-                        payload: {
-                            playerId: playerId,
-                            playerName: joinPlayerName,
-                            roomId: roomId
-                        }
+                        payload: { playerId, playerName: payload.playerName, roomId }
                     }));
 
                     // Notificar todos os jogadores
@@ -136,68 +108,9 @@ wss.on('connection', (ws) => {
                                 type: 'PLAYER_JOINED',
                                 payload: {
                                     playerId,
-                                    playerName: joinPlayerName,
-                                    players: room.players.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot || false }))
+                                    playerName: payload.playerName,
+                                    players: room.players.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot, score: pl.score }))
                                 }
-                            }));
-                        }
-                    });
-                    break;
-
-                case 'GAME_ACTION':
-                    if (!roomId || !rooms.has(roomId)) return;
-                    
-                    const gameRoom = rooms.get(roomId);
-                    
-                    // Broadcast para todos os outros jogadores
-                    gameRoom.players.forEach(p => {
-                        if (p.id !== playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            p.ws.send(JSON.stringify({
-                                type: 'GAME_UPDATE',
-                                payload: { ...payload, fromPlayerId: playerId }
-                            }));
-                        }
-                    });
-                    break;
-
-                case 'GAME_STATE_SYNC':
-                    if (!roomId || !rooms.has(roomId)) return;
-                    
-                    const syncRoom = rooms.get(roomId);
-                    syncRoom.gameState = payload.gameState;
-                    
-                    // Broadcast estado completo para todos
-                    syncRoom.players.forEach(p => {
-                        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            p.ws.send(JSON.stringify({
-                                type: 'GAME_STATE_UPDATE',
-                                payload: { gameState: syncRoom.gameState }
-                            }));
-                        }
-                    });
-                    break;
-
-                case 'START_GAME':
-                    if (!roomId || !rooms.has(roomId)) return;
-                    
-                    const startRoom = rooms.get(roomId);
-                    if (startRoom.hostId !== playerId) {
-                        ws.send(JSON.stringify({
-                            type: 'ERROR',
-                            payload: { message: 'Apenas o host pode iniciar o jogo' }
-                        }));
-                        return;
-                    }
-
-                    console.log(`Jogo iniciado na sala ${roomId}`);
-                    // Se o host enviou uma lista de jogadores (incluindo bots), use-a
-                    const gamePlayers = payload.players || startRoom.players.map(pl => ({ id: pl.id, name: pl.name, isBot: false }));
-                    
-                    startRoom.players.forEach(p => {
-                        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            p.ws.send(JSON.stringify({
-                                type: 'GAME_STARTED',
-                                payload: { players: gamePlayers }
                             }));
                         }
                     });
@@ -208,103 +121,66 @@ wss.on('connection', (ws) => {
                     const botRoom = rooms.get(roomId);
                     if (botRoom.hostId !== playerId) return;
 
-                    console.log('UPDATE_BOTS - broadcasting to all players in room', roomId);
-                    console.log('UPDATE_BOTS - players list:', payload.players.map(p => p.name + (p.isBot ? ' (bot)' : '')));
+                    const humanPlayers = botRoom.players.filter(p => !p.isBot);
+                    const newPlayers = payload.players.map(p => {
+                        const existing = humanPlayers.find(hp => hp.id === p.id);
+                        return existing || { ...p, ws: null };
+                    });
+                    
+                    botRoom.players = newPlayers;
 
-                    // Notificar TODOS os jogadores sobre a nova lista (incluindo bots)
-                    // Isso inclui o host também para garantir consistência
+                    console.log(`Bots atualizados na sala ${roomId}`);
+
+                    // Notificar todos
                     botRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            console.log('UPDATE_BOTS - sending to player:', p.name);
                             p.ws.send(JSON.stringify({
                                 type: 'BOTS_UPDATED',
-                                payload: {
-                                    players: payload.players
-                                }
+                                payload: { players: newPlayers.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot, score: pl.score })) }
                             }));
                         }
                     });
                     break;
-                case 'RESTART_REQUEST':
-                    const restartRoom = rooms.get(roomId);
-                    if (!restartRoom) return;
-                    const requester = restartRoom.players.find(p => p.id === playerId);
-                    restartRoom.players.forEach(p => {
-                        if (p.id !== playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            p.ws.send(JSON.stringify({
-                                type: 'GAME_UPDATE',
-                                payload: { 
-                                    action: 'RESTART_REQUEST', 
-                                    fromPlayerId: playerId,
-                                    fromPlayerName: requester ? requester.name : 'Jogador'
-                                }
-                            }));
-                        }
-                    });
-                    break;
-                case 'RESTART_CONFIRMED':
-                    const confirmRoom = rooms.get(roomId);
-                    if (!confirmRoom) return;
-                    confirmRoom.players.forEach(p => {
+
+                case 'START_GAME':
+                    if (!roomId || !rooms.has(roomId)) return;
+                    const startRoom = rooms.get(roomId);
+                    if (startRoom.hostId !== playerId) return;
+
+                    console.log(`Jogo iniciado na sala ${roomId}`);
+                    
+                    // Apenas notificar que o jogo começou
+                    // O jogo roda localmente em cada cliente
+                    startRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
                             p.ws.send(JSON.stringify({
-                                type: 'GAME_UPDATE',
-                                payload: { action: 'GAME_RESTARTED' }
-                            }));
-                        }
-                    });
-                    break;
-                case 'SURRENDER':
-                    const surrenderRoom = rooms.get(roomId);
-                    if (!surrenderRoom) return;
-                    surrenderRoom.players.forEach(p => {
-                        if (p.id !== playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            p.ws.send(JSON.stringify({
-                                type: 'GAME_UPDATE',
-                                payload: { action: 'PLAYER_SURRENDERED', fromPlayerId: playerId }
+                                type: 'GAME_STARTED',
+                                payload: { 
+                                    players: startRoom.players.map(pl => ({ 
+                                        id: pl.id, 
+                                        name: pl.name, 
+                                        isBot: pl.isBot 
+                                    }))
+                                }
                             }));
                         }
                     });
                     break;
             }
         } catch (error) {
-            console.error('Error processing message:', error);
-            ws.send(JSON.stringify({
-                type: 'ERROR',
-                payload: { message: 'Erro ao processar mensagem' }
-            }));
+            console.error('Error:', error);
         }
     });
 
     ws.on('close', () => {
-        console.log(`Conexão fechada: ${playerId}`);
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
             room.players = room.players.filter(p => p.id !== playerId);
-            
-            // Notificar outros jogadores
-            room.players.forEach(p => {
-                if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-                    p.ws.send(JSON.stringify({
-                        type: 'PLAYER_LEFT',
-                        payload: { 
-                            playerId, 
-                            players: room.players.map(pl => ({ id: pl.id, name: pl.name, isBot: pl.isBot || false })) 
-                        }
-                    }));
-                }
-            });
-
-            // Remover sala se estiver vazia
             if (room.players.length === 0) {
                 rooms.delete(roomId);
                 console.log(`Sala ${roomId} removida`);
             }
         }
-    });
-
-    ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
     });
 });
 

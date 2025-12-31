@@ -89,6 +89,12 @@ const playSound = (type: 'select' | 'reveal' | 'place' | 'penalty' | 'shuffle' |
   }
 };
 
+
+// WebSocket URL
+const WS_URL = window.location.protocol === 'https:' 
+  ? `wss://${window.location.host}/ws`
+  : `ws://${window.location.host}/ws`;
+
 const App: React.FC = () => {
   const [view, setView] = useState<View>('HOME');
   const [playerName, setPlayerName] = useState('Jogador');
@@ -100,42 +106,93 @@ const App: React.FC = () => {
   const [roomCode, setRoomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [inputCode, setInputCode] = useState('');
 
+  
+  // WebSocket state
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [playerId, setPlayerId] = useState<string>('');
+  const [roomId, setRoomId] = useState<string>('');
+  const [waitingForPlayers, setWaitingForPlayers] = useState(false);
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [takenRowIndex, setTakenRowIndex] = useState<number | null>(null);
 
   const handleCreateRoom = () => {
+    if (!playerName.trim()) {
+      alert('Digite seu nome!');
+      return;
+    }
+    if (!ws || !wsConnected) {
+      alert('Conectando ao servidor...');
+      return;
+    }
+    
     playSound('select', isMuted);
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(newCode);
-    setLobbyPlayers([{ id: 'player', name: playerName, isBot: false, score: 0 }]);
-    setView('LOBBY');
+    console.log('[WS] Criando sala...');
+    ws.send(JSON.stringify({
+      type: 'CREATE_ROOM',
+      payload: { playerName: playerName.trim() }
+    }));
   };
 
   const handleJoinRoom = () => {
-    if (inputCode.length < 4) return;
+    if (!playerName.trim()) {
+      alert('Digite seu nome!');
+      return;
+    }
+    if (inputCode.length < 4) {
+      alert('Digite o código da sala!');
+      return;
+    }
+    if (!ws || !wsConnected) {
+      alert('Conectando ao servidor...');
+      return;
+    }
+    
     playSound('select', isMuted);
-    setRoomCode(inputCode.toUpperCase());
-    // Simulate joining an existing room with one player "Amigo"
-    setLobbyPlayers([
-      { id: 'friend', name: 'Amigo', isBot: false, score: 0 },
-      { id: 'player', name: playerName, isBot: false, score: 0 }
-    ]);
-    setView('LOBBY');
+    console.log('[WS] Entrando na sala...');
+    ws.send(JSON.stringify({
+      type: 'JOIN_ROOM',
+      payload: { 
+        roomId: inputCode.trim().toUpperCase(),
+        playerName: playerName.trim()
+      }
+    }));
   };
 
   const addBot = () => {
     playSound('select', isMuted);
     if (lobbyPlayers.length >= MAX_PLAYERS) return;
-    setLobbyPlayers(prev => [
-      ...prev,
-      { id: `bot-${prev.length}`, name: `Bot ${prev.length + 1}`, isBot: true, score: 0 }
-    ]);
+    
+    const newPlayers = [
+      ...lobbyPlayers,
+      { id: `bot-${Date.now()}`, name: `Bot ${lobbyPlayers.filter(p => p.isBot).length + 1}`, isBot: true, score: 0 }
+    ];
+    setLobbyPlayers(newPlayers);
+    
+    if (ws && wsConnected) {
+      console.log('[WS] Atualizando bots...');
+      ws.send(JSON.stringify({
+        type: 'UPDATE_BOTS',
+        payload: { players: newPlayers }
+      }));
+    }
   };
 
   const removePlayer = (id: string) => {
     playSound('penalty', isMuted);
-    if (id === 'player') return;
-    setLobbyPlayers(prev => prev.filter(p => p.id !== id));
+    if (id === playerId) return;
+    
+    const newPlayers = lobbyPlayers.filter(p => p.id !== id);
+    setLobbyPlayers(newPlayers);
+    
+    if (ws && wsConnected) {
+      console.log('[WS] Removendo jogador...');
+      ws.send(JSON.stringify({
+        type: 'UPDATE_BOTS',
+        payload: { players: newPlayers }
+      }));
+    }
   };
 
   const startNewRound = useCallback((currentPlayers: Player[]) => {
@@ -166,48 +223,251 @@ const App: React.FC = () => {
   }, [isMuted]);
 
   const startGame = () => {
+    if (lobbyPlayers.length < 2) {
+      alert('Adicione pelo menos 2 jogadores!');
+      return;
+    }
+    
     playSound('select', isMuted);
-    const initialPlayers: Player[] = lobbyPlayers.map(p => ({
-      id: p.id!,
-      name: p.name!,
-      isBot: p.isBot!,
-      score: 0,
-      hand: [],
-      selectedCard: null
-    }));
-    startNewRound(initialPlayers);
-    setView('GAME');
+    
+    if (ws && wsConnected) {
+      console.log('[WS] Iniciando jogo...');
+      ws.send(JSON.stringify({
+        type: 'START_GAME',
+        payload: {}
+      }));
+    }
   };
 
   const selectPlayerCard = (card: CardType) => {
     if (!gameState || gameState.phase !== GamePhase.CHOOSING) return;
+    if (waitingForPlayers) return;
+    
     playSound('select', isMuted);
-
-    const newPlayers = gameState.players.map(p => {
-      if (p.id === playerId) {
-        return { ...p, selectedCard: card };
-      }
-      if (p.isBot) {
-        const rowEnds = gameState.rows.map(r => r[r.length - 1].value);
-        const bestCard = p.hand.reduce((prev, curr) => {
-          const prevFit = rowEnds.filter(v => v < prev.value).map(v => prev.value - v);
-          const currFit = rowEnds.filter(v => v < curr.value).map(v => curr.value - v);
-          const prevMin = prevFit.length > 0 ? Math.min(...prevFit) : 999;
-          const currMin = currFit.length > 0 ? Math.min(...currFit) : 999;
-          return currMin < prevMin ? curr : prev;
-        }, p.hand[0]);
-        const finalCard = Math.random() > 0.8 ? p.hand[Math.floor(Math.random() * p.hand.length)] : bestCard;
-        return { ...p, selectedCard: finalCard };
-      }
-      return p;
-    });
-
-    setGameState(prev => prev ? ({
+    
+    // Remover carta da mão localmente
+    setGameState(prev => prev ? {
       ...prev,
-      players: newPlayers,
-      phase: GamePhase.REVEALING,
-      message: 'Revelando...'
-    }) : null);
+      players: prev.players.map(p => 
+        p.id === playerId 
+          ? { ...p, hand: p.hand.filter(c => c.value !== card.value), selectedCard: card }
+          : p
+      ),
+      message: 'Aguardando outros jogadores...'
+    } : null);
+    
+    setWaitingForPlayers(true);
+    
+    // Enviar jogada para servidor
+    if (ws && wsConnected) {
+      console.log('[WS] Jogando carta:', card.value);
+      ws.send(JSON.stringify({
+        type: 'PLAY_CARD',
+        payload: { cardValue: card.value }
+      }));
+    }
+  };
+
+  // WebSocket connection
+  useEffect(() => {
+    const websocket = new WebSocket(WS_URL);
+    
+    websocket.onopen = () => {
+      console.log('[WS] Conectado');
+      setWsConnected(true);
+    };
+    
+    websocket.onclose = () => {
+      console.log('[WS] Desconectado');
+      setWsConnected(false);
+    };
+    
+    websocket.onerror = (error) => {
+      console.error('[WS] Erro:', error);
+    };
+    
+    websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[WS] Mensagem recebida:', data.type);
+        handleWebSocketMessage(data);
+      } catch (error) {
+        console.error('[WS] Erro ao processar mensagem:', error);
+      }
+    };
+    
+    setWs(websocket);
+    
+    return () => {
+      console.log('[WS] Fechando conexão');
+      websocket.close();
+    };
+  }, []);
+
+  const handleWebSocketMessage = (data: any) => {
+    const { type, payload } = data;
+    
+    switch (type) {
+      case 'ROOM_CREATED':
+        console.log('[WS] Sala criada:', payload.roomId);
+        setRoomId(payload.roomId);
+        setPlayerId(payload.playerId);
+        setRoomCode(payload.roomId);
+        setLobbyPlayers([{ id: payload.playerId, name: payload.playerName, isBot: false, score: 0 }]);
+        setView('LOBBY');
+        break;
+        
+      case 'JOIN_CONFIRMED':
+        console.log('[WS] Entrada confirmada');
+        setRoomId(payload.roomId);
+        setPlayerId(payload.playerId);
+        setView('LOBBY');
+        break;
+        
+      case 'PLAYER_JOINED':
+      case 'BOTS_UPDATED':
+        console.log('[WS] Jogadores atualizados');
+        setLobbyPlayers(payload.players);
+        break;
+        
+      case 'GAME_STARTED':
+        console.log('[WS] Jogo iniciado');
+        const myPlayer = payload.players.find((p: any) => p.id === payload.playerId);
+        if (myPlayer && myPlayer.hand) {
+          const serverPlayers: Player[] = payload.players.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            isBot: p.isBot,
+            score: p.score,
+            hand: p.hand,
+            selectedCard: null
+          }));
+          
+          setGameState({
+            rows: payload.rows,
+            players: serverPlayers,
+            phase: GamePhase.CHOOSING,
+            currentTurnOrder: [],
+            resolvingIndex: 0,
+            message: 'Escolha sua carta'
+          });
+          
+          setView('GAME');
+        }
+        break;
+        
+      case 'CARD_PLAYED':
+        console.log('[WS] Carta jogada');
+        setWaitingForPlayers(!payload.allPlayed);
+        if (payload.allPlayed && gameState) {
+          setGameState(prev => prev ? {
+            ...prev,
+            phase: GamePhase.REVEALING,
+            message: 'Revelando...'
+          } : null);
+        }
+        break;
+        
+      case 'ROUND_REVEALING':
+        console.log('[WS] Revelando cartas');
+        if (gameState) {
+          playSound('reveal', isMuted);
+          setGameState(prev => prev ? {
+            ...prev,
+            phase: GamePhase.REVEALING,
+            message: 'Revelando...'
+          } : null);
+        }
+        break;
+        
+      case 'CARD_RESOLVED':
+        console.log('[WS] Carta resolvida');
+        if (gameState) {
+          setGameState(prev => prev ? {
+            ...prev,
+            rows: payload.rows,
+            players: prev.players.map(p => {
+              const updated = payload.players.find((up: any) => up.id === p.id);
+              return updated ? { ...p, score: updated.score } : p;
+            }),
+            message: `${payload.playerName} ${payload.penalty > 0 ? `pegou ${payload.penalty} pontos!` : 'jogou'}`
+          } : null);
+          if (payload.penalty > 0) {
+            playSound('penalty', isMuted);
+            setTakenRowIndex(payload.rowIndex);
+            setTimeout(() => setTakenRowIndex(null), 800);
+          } else {
+            playSound('place', isMuted);
+          }
+        }
+        break;
+        
+      case 'NEXT_TURN':
+        console.log('[WS] Próximo turno');
+        if (gameState) {
+          setGameState(prev => prev ? {
+            ...prev,
+            phase: GamePhase.CHOOSING,
+            message: 'Escolha sua carta',
+            players: prev.players.map(p => ({ ...p, selectedCard: null }))
+          } : null);
+        }
+        setWaitingForPlayers(false);
+        break;
+        
+      case 'NEW_ROUND_STARTING':
+        console.log('[WS] Nova rodada iniciando');
+        if (gameState) {
+          playSound('shuffle', isMuted);
+          setGameState(prev => prev ? {
+            ...prev,
+            phase: GamePhase.BETWEEN_ROUNDS,
+            message: 'Preparando nova rodada...'
+          } : null);
+        }
+        break;
+        
+      case 'ROUND_STARTED':
+        console.log('[WS] Rodada iniciada');
+        if (gameState) {
+          const myHand = payload.hand;
+          setGameState(prev => prev ? {
+            ...prev,
+            rows: payload.rows,
+            phase: GamePhase.CHOOSING,
+            message: 'Escolha sua carta',
+            players: prev.players.map(p => {
+              if (p.id === playerId) {
+                return { ...p, hand: myHand, selectedCard: null };
+              }
+              const updated = payload.players.find((up: any) => up.id === p.id);
+              return updated ? { ...p, score: updated.score, selectedCard: null } : p;
+            })
+          } : null);
+        }
+        break;
+        
+      case 'GAME_OVER':
+        console.log('[WS] Fim de jogo');
+        if (gameState) {
+          playSound('win', isMuted);
+          setGameState(prev => prev ? {
+            ...prev,
+            phase: GamePhase.GAME_OVER,
+            message: 'Fim de jogo!',
+            players: prev.players.map(p => {
+              const updated = payload.players.find((up: any) => up.id === p.id);
+              return updated ? { ...p, score: updated.score } : p;
+            })
+          } : null);
+        }
+        break;
+        
+      case 'ERROR':
+        console.error('[WS] Erro do servidor:', payload.message);
+        alert(payload.message);
+        break;
+    }
   };
 
   useEffect(() => {
@@ -487,9 +747,9 @@ const App: React.FC = () => {
               <div key={p.id} className="bg-zinc-800/60 border border-zinc-700/40 rounded-2xl p-5 flex justify-between items-center animate-in slide-in-from-bottom-4 duration-500 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className={`w-2.5 h-2.5 rounded-full ${p.isBot ? 'bg-zinc-600' : 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'}`} />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-200">{p.name} {p.id === 'player' && '(You)'}</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-200">{p.name} {p.id === playerId && '(You)'}</span>
                 </div>
-                {p.id !== 'player' && (
+                {p.id !== playerId && (
                   <button onClick={() => removePlayer(p.id!)} className="text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-red-400 transition-colors py-1 px-3 border border-transparent hover:border-red-900/20 rounded-lg">
                     Expulsar
                   </button>
@@ -559,7 +819,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 w-full flex justify-center bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-800/60 z-30 pt-4 pb-6 shadow-2xl">
         <div className="w-full max-w-6xl px-4 overflow-x-auto no-scrollbar">
           <div className="flex flex-nowrap justify-start md:justify-center gap-3 lg:gap-4 min-w-max md:min-w-0 mx-auto px-4">
-            {gameState.players.find(p => p.id === 'player')?.hand.map(card => (
+            {gameState.players.find(p => p.id === playerId)?.hand.map(card => (
               <div key={card.value} className="flex-shrink-0">
                 <Card 
                   value={card.value}
@@ -602,7 +862,7 @@ const App: React.FC = () => {
           <div className="bg-[#1e1e1e]/98 backdrop-blur-3xl border border-zinc-700/60 p-8 md:p-10 rounded-3xl shadow-2xl flex flex-wrap justify-center items-center gap-6 md:gap-10 transition-all animate-in fade-in zoom-in duration-300 pointer-events-auto max-w-5xl">
              {sortedRevealedPlayers.map(p => {
                const isCurrent = gameState.currentTurnOrder[gameState.resolvingIndex]?.playerId === p.id;
-               const isHost = p.id === 'player';
+                const isHost = p.id === playerId;
                return (
                  <div key={p.id} className={`flex flex-col items-center gap-3 transition-all duration-300 ${isCurrent ? 'scale-110 md:scale-125 z-10' : 'scale-90 opacity-25'}`}>
                     <span className={`text-[10px] md:text-[11px] uppercase font-black tracking-[0.2em] ${isHost ? 'text-amber-400' : 'text-zinc-400'}`}>
