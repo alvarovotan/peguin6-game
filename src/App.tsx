@@ -507,17 +507,30 @@ const App: React.FC = () => {
               <h1 className="text-3xl font-black text-white uppercase italic">Inserir Código</h1>
            </div>
            <div className="space-y-4">
-              <input 
-                type="text" 
-                maxLength={6}
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                placeholder="Ex: A1B2C3"
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-5 text-center text-lg font-mono font-bold tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-700 shadow-inner"
-              />
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 px-1">Seu Nome</label>
+                <input 
+                  type="text" 
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Digite seu nome"
+                  className="w-full bg-zinc-800/40 border border-zinc-700 rounded-xl p-5 text-sm font-bold tracking-widest focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-600 shadow-md"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 px-1">Código da Sala</label>
+                <input 
+                  type="text" 
+                  maxLength={6}
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                  placeholder="Ex: A1B2C3"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-5 text-center text-lg font-mono font-bold tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-700 shadow-inner"
+                />
+              </div>
               <button 
                 onClick={handleJoinRoom}
-                disabled={inputCode.length < 4}
+                disabled={inputCode.length < 4 || playerName.trim().length === 0}
                 className="w-full bg-zinc-100 text-zinc-900 p-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] hover:bg-white transition-all active:scale-95 disabled:opacity-20 shadow-lg"
               >
                 Entrar
@@ -631,7 +644,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 w-full flex justify-center bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-800/60 z-30 pt-4 pb-6 shadow-2xl">
         <div className="w-full max-w-6xl px-4 overflow-x-auto no-scrollbar">
           <div className="flex flex-nowrap justify-start md:justify-center gap-3 lg:gap-4 min-w-max md:min-w-0 mx-auto px-4">
-            {gameState.players.find(p => p.id === 'player')?.hand.map(card => (
+            {gameState.players.find(p => p.id === playerId)?.hand.map(card => (
               <div key={card.value} className="flex-shrink-0">
                 <Card 
                   value={card.value}
