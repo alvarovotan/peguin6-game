@@ -184,7 +184,7 @@ const App: React.FC = () => {
     playSound('select', isMuted);
 
     const newPlayers = gameState.players.map(p => {
-      if (p.id === 'player') {
+      if (p.id === playerId) {
         return { ...p, selectedCard: card };
       }
       if (p.isBot) {
