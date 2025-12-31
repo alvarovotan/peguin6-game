@@ -166,16 +166,26 @@ const App: React.FC = () => {
             break;
             
           case 'GAME_STARTED':
-            const initialPlayers: Player[] = data.payload.players.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              isBot: p.isBot,
-              score: 0,
-              hand: [],
-              selectedCard: null
-            }));
-            startNewRound(initialPlayers);
-            setView('GAME');
+            console.log('GAME_STARTED received:', data.payload);
+            try {
+              const initialPlayers: Player[] = data.payload.players.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                isBot: p.isBot || false,
+                score: 0,
+                hand: [],
+                selectedCard: null
+              }));
+              console.log('Initial players:', initialPlayers);
+              setView('GAME');
+              // Pequeno delay para garantir que a view mudou antes de iniciar o round
+              setTimeout(() => {
+                startNewRound(initialPlayers);
+              }, 100);
+            } catch (e) {
+              console.error('Error starting game:', e);
+              setErrorMessage('Erro ao iniciar o jogo');
+            }
             break;
             
           case 'ERROR':
@@ -769,7 +779,32 @@ const App: React.FC = () => {
     );
   }
 
-  return null;
+  // Tela de loading quando está carregando o jogo
+  if (view === 'GAME' && !gameState) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-white text-lg">Iniciando jogo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback - não deveria chegar aqui
+  return (
+    <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
+      <div className="text-center space-y-4">
+        <p className="text-white text-lg">Carregando...</p>
+        <button
+          onClick={resetGame}
+          className="px-6 py-3 bg-white text-zinc-900 rounded-lg font-bold hover:bg-zinc-100 transition"
+        >
+          Voltar ao Início
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default App;
