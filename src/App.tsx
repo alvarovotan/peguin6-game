@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CardType, Player, GamePhase, GameState, View } from './types';
 import { createDeck, shuffle } from './constants';
 import Card from './components/Card';
@@ -9,133 +8,249 @@ import ScoreBoard from './components/ScoreBoard';
 const WINNING_SCORE = 66;
 const MAX_PLAYERS = 10;
 
-// Programmatic Sound Engine
+const getWebSocketUrl = () => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  return `${protocol}//${host}/ws`;
+};
+
 const playSound = (type: 'select' | 'reveal' | 'place' | 'penalty' | 'shuffle' | 'win', isMuted: boolean) => {
   if (isMuted) return;
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  
-  const now = ctx.currentTime;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
 
-  switch (type) {
-    case 'select':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.1);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.1);
-      osc.start();
-      osc.stop(now + 0.1);
-      break;
-    case 'reveal':
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.2);
-      osc.start();
-      osc.stop(now + 0.2);
-      break;
-    case 'place':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(220, now);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      osc.start();
-      osc.stop(now + 0.1);
-      break;
-    case 'penalty':
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(110, now);
-      osc.frequency.linearRampToValueAtTime(55, now + 0.3);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.3);
-      osc.start();
-      osc.stop(now + 0.3);
-      break;
-    case 'shuffle':
-      const bufferSize = ctx.sampleRate * 0.3;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.05, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      noise.connect(noiseGain);
-      noiseGain.connect(ctx.destination);
-      noise.start();
-      break;
-    case 'win':
-      [523.25, 659.25, 783.99].forEach((f, i) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(f, now + i * 0.1);
-        g.gain.setValueAtTime(0, now + i * 0.1);
-        g.gain.linearRampToValueAtTime(0.1, now + i * 0.1 + 0.05);
-        g.gain.linearRampToValueAtTime(0, now + 0.6);
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.start(now + i * 0.1);
-        o.stop(now + 0.6);
-      });
-      break;
+    switch (type) {
+      case 'select':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start();
+        osc.stop(now + 0.1);
+        break;
+      case 'reveal':
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start();
+        osc.stop(now + 0.2);
+        break;
+      case 'place':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start();
+        osc.stop(now + 0.1);
+        break;
+      case 'penalty':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.linearRampToValueAtTime(55, now + 0.3);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start();
+        osc.stop(now + 0.3);
+        break;
+      case 'shuffle':
+        const bufferSize = ctx.sampleRate * 0.3;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.05, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        noise.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start();
+        break;
+      case 'win':
+        [523.25, 659.25, 783.99].forEach((f, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(f, now + i * 0.1);
+          g.gain.setValueAtTime(0, now + i * 0.1);
+          g.gain.linearRampToValueAtTime(0.1, now + i * 0.1 + 0.05);
+          g.gain.linearRampToValueAtTime(0, now + 0.6);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start(now + i * 0.1);
+          o.stop(now + 0.6);
+        });
+        break;
+    }
+  } catch (e) {
+    console.error('Error playing sound:', e);
   }
 };
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('HOME');
   const [playerName, setPlayerName] = useState('Jogador');
+  const [playerId, setPlayerId] = useState<string>('');
   const [isMuted, setIsMuted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [lobbyPlayers, setLobbyPlayers] = useState<Partial<Player>[]>([
-    { id: 'player', name: 'Jogador', isBot: false, score: 0 }
-  ]);
-  const [roomCode, setRoomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
+  const [lobbyPlayers, setLobbyPlayers] = useState<Partial<Player>[]>([]);
+  const [roomCode, setRoomCode] = useState('');
   const [inputCode, setInputCode] = useState('');
+  const [isHost, setIsHost] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [takenRowIndex, setTakenRowIndex] = useState<number | null>(null);
 
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Conectar WebSocket
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    
+    setConnectionStatus('connecting');
+    const ws = new WebSocket(getWebSocketUrl());
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setConnectionStatus('connected');
+      setErrorMessage('');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Received:', data);
+        
+        switch (data.type) {
+          case 'ROOM_CREATED':
+            setPlayerId(data.payload.playerId);
+            setRoomCode(data.payload.roomId);
+            setIsHost(true);
+            setLobbyPlayers([{ id: data.payload.playerId, name: data.payload.playerName, isBot: false, score: 0 }]);
+            setView('LOBBY');
+            playSound('select', isMuted);
+            break;
+            
+          case 'JOIN_CONFIRMED':
+            setPlayerId(data.payload.playerId);
+            setRoomCode(data.payload.roomId);
+            setIsHost(false);
+            playSound('select', isMuted);
+            break;
+            
+          case 'PLAYER_JOINED':
+            setLobbyPlayers(data.payload.players);
+            if (data.payload.playerId !== playerId) {
+              playSound('select', isMuted);
+            }
+            break;
+            
+          case 'PLAYER_LEFT':
+            setLobbyPlayers(data.payload.players);
+            playSound('penalty', isMuted);
+            break;
+            
+          case 'BOTS_UPDATED':
+            setLobbyPlayers(data.payload.players);
+            break;
+            
+          case 'GAME_STARTED':
+            const initialPlayers: Player[] = data.payload.players.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              isBot: p.isBot,
+              score: 0,
+              hand: [],
+              selectedCard: null
+            }));
+            startNewRound(initialPlayers);
+            setView('GAME');
+            break;
+            
+          case 'ERROR':
+            setErrorMessage(data.payload.message);
+            playSound('penalty', isMuted);
+            break;
+        }
+      } catch (e) {
+        console.error('Error parsing message:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionStatus('disconnected');
+      setErrorMessage('Erro de conexão com o servidor');
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setConnectionStatus('disconnected');
+    };
+    
+    wsRef.current = ws;
+  }, [isMuted, playerId]);
+
+  // Conectar ao montar
+  useEffect(() => {
+    connectWebSocket();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  const sendMessage = (type: string, payload: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type, payload }));
+    } else {
+      setErrorMessage('Não conectado ao servidor');
+    }
+  };
+
   const handleCreateRoom = () => {
     playSound('select', isMuted);
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(newCode);
-    setLobbyPlayers([{ id: 'player', name: playerName, isBot: false, score: 0 }]);
-    setView('LOBBY');
+    sendMessage('CREATE_ROOM', { playerName });
   };
 
   const handleJoinRoom = () => {
-    if (inputCode.length < 4) return;
+    if (inputCode.length < 4) {
+      setErrorMessage('Código inválido');
+      return;
+    }
     playSound('select', isMuted);
-    setRoomCode(inputCode.toUpperCase());
-    // Simulate joining an existing room with one player "Amigo"
-    setLobbyPlayers([
-      { id: 'friend', name: 'Amigo', isBot: false, score: 0 },
-      { id: 'player', name: playerName, isBot: false, score: 0 }
-    ]);
+    sendMessage('JOIN_ROOM', { roomId: inputCode.toUpperCase(), playerName });
     setView('LOBBY');
   };
 
   const addBot = () => {
-    playSound('select', isMuted);
     if (lobbyPlayers.length >= MAX_PLAYERS) return;
-    setLobbyPlayers(prev => [
-      ...prev,
-      { id: `bot-${prev.length}`, name: `Bot ${prev.length + 1}`, isBot: true, score: 0 }
-    ]);
+    playSound('select', isMuted);
+    const newPlayers = [
+      ...lobbyPlayers,
+      { id: `bot-${Date.now()}`, name: `Bot ${lobbyPlayers.filter(p => p.isBot).length + 1}`, isBot: true, score: 0 }
+    ];
+    setLobbyPlayers(newPlayers);
+    sendMessage('UPDATE_BOTS', { players: newPlayers });
   };
 
   const removePlayer = (id: string) => {
+    if (id === playerId) return;
     playSound('penalty', isMuted);
-    if (id === 'player') return;
-    setLobbyPlayers(prev => prev.filter(p => p.id !== id));
+    const newPlayers = lobbyPlayers.filter(p => p.id !== id);
+    setLobbyPlayers(newPlayers);
+    sendMessage('UPDATE_BOTS', { players: newPlayers });
   };
 
   const startNewRound = useCallback((currentPlayers: Player[]) => {
@@ -160,23 +275,15 @@ const App: React.FC = () => {
       phase: GamePhase.CHOOSING,
       currentTurnOrder: [],
       resolvingIndex: 0,
-      message: 'Sua vez'
+      message: 'Escolha sua carta'
     });
     setTakenRowIndex(null);
   }, [isMuted]);
 
   const startGame = () => {
+    if (!isHost) return;
     playSound('select', isMuted);
-    const initialPlayers: Player[] = lobbyPlayers.map(p => ({
-      id: p.id!,
-      name: p.name!,
-      isBot: p.isBot!,
-      score: 0,
-      hand: [],
-      selectedCard: null
-    }));
-    startNewRound(initialPlayers);
-    setView('GAME');
+    sendMessage('START_GAME', { players: lobbyPlayers });
   };
 
   const selectPlayerCard = (card: CardType) => {
@@ -184,7 +291,7 @@ const App: React.FC = () => {
     playSound('select', isMuted);
 
     const newPlayers = gameState.players.map(p => {
-      if (p.id === 'player') {
+      if (p.id === playerId) {
         return { ...p, selectedCard: card };
       }
       if (p.isBot) {
@@ -206,7 +313,7 @@ const App: React.FC = () => {
       ...prev,
       players: newPlayers,
       phase: GamePhase.REVEALING,
-      message: 'Revelando...'
+      message: 'Revelando cartas...'
     }) : null);
   };
 
@@ -223,9 +330,9 @@ const App: React.FC = () => {
           phase: GamePhase.RESOLVING,
           currentTurnOrder: turnOrder,
           resolvingIndex: 0,
-          message: 'Processando...'
+          message: 'Processando jogadas...'
         }) : null);
-      }, 800);
+      }, 1200);
       return () => clearTimeout(timeout);
     }
   }, [gameState?.phase, isMuted]);
@@ -240,9 +347,9 @@ const App: React.FC = () => {
           const gameOver = prev.players.some(p => p.score >= WINNING_SCORE);
           if (gameOver) {
             playSound('win', isMuted);
-            return { ...prev, phase: GamePhase.GAME_OVER, message: 'Fim da linha!' };
+            return { ...prev, phase: GamePhase.GAME_OVER, message: 'Fim do jogo!' };
           }
-          return { ...prev, phase: GamePhase.BETWEEN_ROUNDS, message: 'Calculando...' };
+          return { ...prev, phase: GamePhase.BETWEEN_ROUNDS, message: 'Próxima rodada...' };
         }
         return {
           ...prev,
@@ -271,7 +378,9 @@ const App: React.FC = () => {
       });
 
       if (targetRowIndex === -1) {
-        if (!player.isBot) return { ...prev, phase: GamePhase.CHOOSING_ROW, message: 'Escolha o veneno!' };
+        if (player.id === playerId && !player.isBot) {
+          return { ...prev, phase: GamePhase.CHOOSING_ROW, message: 'Escolha uma fileira para pegar' };
+        }
         const rowBulls = prev.rows.map(row => row.reduce((sum, c) => sum + c.bulls, 0));
         const minBulls = Math.min(...rowBulls);
         targetRowIndex = rowBulls.indexOf(minBulls);
@@ -294,376 +403,364 @@ const App: React.FC = () => {
         newRows[targetRowIndex] = [card];
         const newPlayers = prev.players.map(p => p.id === player.id ? { ...p, score: p.score + penalty, hand: p.hand.filter(c => c.value !== card.value) } : p);
         return { ...prev, rows: newRows, players: newPlayers, resolvingIndex: prev.resolvingIndex + 1 };
-      } else {
-        playSound('place', isMuted);
-        const newRows = [...prev.rows];
-        newRows[targetRowIndex] = [...targetRow, card];
-        const newPlayers = prev.players.map(p => p.id === player.id ? { ...p, hand: p.hand.filter(c => c.value !== card.value) } : p);
-        return { ...prev, rows: newRows, players: newPlayers, resolvingIndex: prev.resolvingIndex + 1 };
       }
+
+      playSound('place', isMuted);
+      const newRows = [...prev.rows];
+      newRows[targetRowIndex] = [...targetRow, card];
+      const newPlayers = prev.players.map(p => p.id === player.id ? { ...p, hand: p.hand.filter(c => c.value !== card.value) } : p);
+      return { ...prev, rows: newRows, players: newPlayers, resolvingIndex: prev.resolvingIndex + 1 };
     });
-  }, [isMuted]);
+  }, [isMuted, playerId]);
 
   useEffect(() => {
-    if (gameState?.phase === GamePhase.RESOLVING) {
-      const timer = setTimeout(resolveNextCard, 800);
-      return () => clearTimeout(timer);
+    if (gameState?.phase === GamePhase.RESOLVING && gameState.resolvingIndex < gameState.currentTurnOrder.length) {
+      const timeout = setTimeout(resolveNextCard, 800);
+      return () => clearTimeout(timeout);
     }
+    if (gameState?.phase === GamePhase.RESOLVING && gameState.resolvingIndex >= gameState.currentTurnOrder.length) {
+      resolveNextCard();
+    }
+  }, [gameState?.phase, gameState?.resolvingIndex, resolveNextCard]);
+
+  useEffect(() => {
     if (gameState?.phase === GamePhase.BETWEEN_ROUNDS) {
-      const timer = setTimeout(() => startNewRound(gameState.players), 3000);
-      return () => clearTimeout(timer);
+      const timeout = setTimeout(() => {
+        startNewRound(gameState.players);
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
-  }, [gameState?.phase, gameState?.resolvingIndex, resolveNextCard, startNewRound]);
+  }, [gameState?.phase, startNewRound]);
 
-  useEffect(() => {
-    if (takenRowIndex !== null) {
-      const timer = setTimeout(() => setTakenRowIndex(null), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [takenRowIndex]);
-
-  const handleRowSelection = (rowIndex: number) => {
+  const chooseRowToTake = (rowIndex: number) => {
     if (!gameState || gameState.phase !== GamePhase.CHOOSING_ROW) return;
     playSound('penalty', isMuted);
+
     const currentMove = gameState.currentTurnOrder[gameState.resolvingIndex];
+    const card = currentMove.card;
+    const player = gameState.players.find(p => p.id === currentMove.playerId)!;
     const penalty = gameState.rows[rowIndex].reduce((sum, c) => sum + c.bulls, 0);
+
     setTakenRowIndex(rowIndex);
     const newRows = [...gameState.rows];
-    newRows[rowIndex] = [currentMove.card];
-    const newPlayers = gameState.players.map(p => p.id === currentMove.playerId ? { ...p, score: p.score + penalty, hand: p.hand.filter(c => c.value !== currentMove.card.value) } : p);
-    setGameState({ ...gameState, rows: newRows, players: newPlayers, phase: GamePhase.RESOLVING, resolvingIndex: gameState.resolvingIndex + 1, message: 'Processando...' });
-  };
-
-  const quitGame = () => {
-    playSound('penalty', isMuted);
-    setShowMenu(false);
-    setView('HOME');
-    setGameState(null);
-  };
-
-  const sortedRevealedPlayers = useMemo(() => {
-    if (!gameState) return [];
-    return [...gameState.players].sort((a, b) => {
-      const valA = a.selectedCard?.value ?? 0;
-      const valB = b.selectedCard?.value ?? 0;
-      return valA - valB;
+    newRows[rowIndex] = [card];
+    const newPlayers = gameState.players.map(p => p.id === player.id ? { ...p, score: p.score + penalty, hand: p.hand.filter(c => c.value !== card.value) } : p);
+    
+    setGameState({
+      ...gameState,
+      rows: newRows,
+      players: newPlayers,
+      phase: GamePhase.RESOLVING,
+      resolvingIndex: gameState.resolvingIndex + 1
     });
-  }, [gameState?.players]);
-
-  const toggleMute = () => {
-    const next = !isMuted;
-    setIsMuted(next);
-    if (!next) playSound('select', false);
   };
 
-  const MuteButton = (
-    <button 
-      onClick={toggleMute}
-      className="p-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 transition-colors"
-      title={isMuted ? "Ativar som" : "Mutar som"}
-    >
-      {isMuted ? (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-      )}
-    </button>
-  );
+  const resetGame = () => {
+    playSound('select', isMuted);
+    setGameState(null);
+    setView('HOME');
+    setLobbyPlayers([]);
+    setRoomCode('');
+    setIsHost(false);
+  };
 
-  const GameMenuButton = (
-    <button 
-      onClick={() => { playSound('select', isMuted); setShowMenu(true); }}
-      className="p-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 transition-colors"
-      title="Menu do Jogo"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-    </button>
-  );
-
+  // Render HOME
   if (view === 'HOME') {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center p-8 bg-[#181818] text-zinc-100 font-sans relative">
-        <div className="absolute top-6 right-6">{MuteButton}</div>
-        <div className="text-center mb-16 animate-in fade-in slide-in-from-top-4 duration-1000">
-          <h1 className="text-5xl font-black tracking-[0.4em] uppercase italic mb-2 text-white drop-shadow-xl">Pegue em 6</h1>
-          <p className="text-[10px] font-black tracking-[0.6em] text-zinc-400 uppercase">Minimalista • Online • Bots</p>
-        </div>
-        <div className="w-full max-w-xs space-y-10">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 px-1">Nickname</label>
-            <input 
-              type="text" 
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              className="w-full bg-zinc-800/40 border border-zinc-700 rounded-xl p-5 text-sm font-bold tracking-widest focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-600 shadow-md"
-            />
-          </div>
-          <div className="flex flex-col gap-4">
-            <button 
-              onClick={handleCreateRoom}
-              className="w-full bg-zinc-100 text-zinc-900 p-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] hover:bg-white transition-all active:scale-95 shadow-lg"
-            >
-              Criar Lobby
-            </button>
-            <button 
-              onClick={() => { playSound('select', isMuted); setView('JOIN'); }}
-              className="w-full bg-zinc-800/60 text-zinc-100 p-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] border border-zinc-700 hover:bg-zinc-800 transition-all active:scale-95"
-            >
-              Entrar em Lobby
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'JOIN') {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center p-8 bg-[#181818] text-zinc-100 font-sans relative">
-        <div className="absolute top-6 right-6 flex gap-3">
-           <button 
-              onClick={() => { playSound('select', isMuted); setView('HOME'); }}
-              className="p-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 transition-colors"
-           >
-             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-           </button>
-           {MuteButton}
-        </div>
-        <div className="w-full max-w-xs space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-           <div className="text-center">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 mb-2">Conectar</h2>
-              <h1 className="text-3xl font-black text-white uppercase italic">Inserir Código</h1>
-           </div>
-           <div className="space-y-4">
-              <input 
-                type="text" 
-                maxLength={6}
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                placeholder="Ex: A1B2C3"
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-5 text-center text-lg font-mono font-bold tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-700 shadow-inner"
-              />
-              <button 
-                onClick={handleJoinRoom}
-                disabled={inputCode.length < 4}
-                className="w-full bg-zinc-100 text-zinc-900 p-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] hover:bg-white transition-all active:scale-95 disabled:opacity-20 shadow-lg"
-              >
-                Entrar
-              </button>
-           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'LOBBY') {
-    return (
-      <div className="h-screen w-full flex flex-col p-8 md:p-12 bg-[#181818] text-zinc-100 font-sans overflow-hidden relative">
-        <div className="absolute top-6 right-6 flex gap-3">
-           <button 
-              onClick={() => { playSound('select', isMuted); setView('HOME'); }}
-              className="p-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 transition-colors"
-           >
-             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-           </button>
-           {MuteButton}
-        </div>
-        <div className="max-w-xl mx-auto w-full flex flex-col h-full">
-          <div className="flex justify-between items-end mb-12 shrink-0">
-            <div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 mb-2">Preparação</h2>
-              <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">Lobby</h1>
-            </div>
-            <div className="text-right">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500 block mb-2">ID da Sala</span>
-              <span className="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono font-bold tracking-[0.2em] text-zinc-200">
-                {roomCode}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-2">
-            {lobbyPlayers.map((p, idx) => (
-              <div key={p.id} className="bg-zinc-800/60 border border-zinc-700/40 rounded-2xl p-5 flex justify-between items-center animate-in slide-in-from-bottom-4 duration-500 shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className={`w-2.5 h-2.5 rounded-full ${p.isBot ? 'bg-zinc-600' : 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'}`} />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-200">{p.name} {p.id === 'player' && '(You)'}</span>
-                </div>
-                {p.id !== 'player' && (
-                  <button onClick={() => removePlayer(p.id!)} className="text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-red-400 transition-colors py-1 px-3 border border-transparent hover:border-red-900/20 rounded-lg">
-                    Expulsar
-                  </button>
-                )}
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4">
+        <div className="max-w-md w-full space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-5xl font-black text-white tracking-tight">6 Nimmt!</h1>
+            <p className="text-zinc-400 text-sm">Jogue online com amigos ou bots</p>
+            {connectionStatus === 'connected' && (
+              <div className="flex items-center justify-center gap-2 text-green-400 text-xs">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                Conectado
               </div>
-            ))}
-            {lobbyPlayers.length < MAX_PLAYERS && (
-              <button 
-                onClick={addBot}
-                className="w-full border-2 border-dashed border-zinc-700/40 rounded-2xl p-5 text-[9px] font-black uppercase tracking-[0.5em] text-zinc-500 hover:text-zinc-200 hover:border-zinc-500 transition-all group"
-              >
-                <span className="group-hover:scale-110 inline-block transition-transform">+ Inserir Robô</span>
-              </button>
+            )}
+            {connectionStatus === 'connecting' && (
+              <div className="flex items-center justify-center gap-2 text-yellow-400 text-xs">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                Conectando...
+              </div>
+            )}
+            {connectionStatus === 'disconnected' && (
+              <div className="flex items-center justify-center gap-2 text-red-400 text-xs">
+                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                Desconectado
+              </div>
             )}
           </div>
 
-          <div className="mt-10 pt-10 border-t border-zinc-800 shrink-0">
-            <button 
-              onClick={startGame}
-              disabled={lobbyPlayers.length < 2}
-              className="w-full bg-white text-black p-6 rounded-3xl text-[11px] font-black uppercase tracking-[0.5em] hover:bg-zinc-100 transition-all active:scale-95 disabled:opacity-20 shadow-xl"
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Seu nome"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition"
+              maxLength={20}
+            />
+
+            <button
+              onClick={handleCreateRoom}
+              disabled={connectionStatus !== 'connected' || !playerName.trim()}
+              className="w-full px-6 py-3 bg-white text-zinc-900 rounded-lg font-bold hover:bg-zinc-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Iniciar Partida
+              Criar Sala
             </button>
-            <p className="text-center mt-6 text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500">
-              {lobbyPlayers.length} Participantes • Max 10
-            </p>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-zinc-700"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-zinc-900 text-zinc-500">ou</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={inputCode}
+                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                placeholder="Código da sala"
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition uppercase text-center text-2xl tracking-widest font-bold"
+                maxLength={6}
+              />
+              <button
+                onClick={handleJoinRoom}
+                disabled={connectionStatus !== 'connected' || !playerName.trim() || inputCode.length < 4}
+                className="w-full px-6 py-3 bg-zinc-700 text-white rounded-lg font-bold hover:bg-zinc-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Entrar na Sala
+              </button>
+            </div>
           </div>
+
+          {errorMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+              {errorMessage}
+            </div>
+          )}
+
+          <button
+            onClick={() => setIsMuted(!isMuted)}
+            className="w-full px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm hover:bg-zinc-700 transition"
+          >
+            {isMuted ? '🔇 Som desligado' : '🔊 Som ligado'}
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!gameState) return null;
-
-  return (
-    <div className="h-screen w-full bg-[#121212] flex flex-col items-center overflow-hidden select-none font-sans relative">
-      {/* Header */}
-      <div className="w-full max-w-5xl flex justify-between items-center py-5 px-8 shrink-0 z-10">
-        <div className="flex flex-col">
-          <h1 className="text-[10px] font-black tracking-[0.4em] text-zinc-500 uppercase">Partida</h1>
-          <p className="text-[12px] text-white font-black uppercase tracking-tight italic">{gameState.message}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <ScoreBoard players={gameState.players} winningScore={WINNING_SCORE} />
-          <div className="flex gap-2">
-            {MuteButton}
-            {GameMenuButton}
-          </div>
-        </div>
-      </div>
-
-      {/* Game Board */}
-      <div className="flex-1 w-full max-w-4xl flex flex-col justify-center gap-3 overflow-hidden px-4 md:px-6 pb-[120px] md:pb-[80px]">
-        {gameState.rows.map((row, idx) => (
-          <TableRow 
-            key={idx} 
-            cards={row} 
-            isSelectable={gameState.phase === GamePhase.CHOOSING_ROW}
-            isPenalty={takenRowIndex === idx}
-            onSelect={() => handleRowSelection(idx)}
-          />
-        ))}
-      </div>
-
-      {/* FIXED FOOTER for Player's Hand */}
-      <div className="fixed bottom-0 left-0 right-0 w-full flex justify-center bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-800/60 z-30 pt-4 pb-6 shadow-2xl">
-        <div className="w-full max-w-6xl px-4 overflow-x-auto no-scrollbar">
-          <div className="flex flex-nowrap justify-start md:justify-center gap-3 lg:gap-4 min-w-max md:min-w-0 mx-auto px-4">
-            {gameState.players.find(p => p.id === 'player')?.hand.map(card => (
-              <div key={card.value} className="flex-shrink-0">
-                <Card 
-                  value={card.value}
-                  bulls={card.bulls}
-                  onClick={() => gameState.phase === GamePhase.CHOOSING && selectPlayerCard(card)}
-                  disabled={gameState.phase !== GamePhase.CHOOSING}
-                  size="large"
-                  isHost={true}
-                />
+  // Render LOBBY
+  if (view === 'LOBBY') {
+    return (
+      <div className="h-screen w-screen flex flex-col bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4">
+        <div className="max-w-2xl w-full mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={resetGame}
+              className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition"
+            >
+              ← Voltar
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="px-4 py-2 bg-zinc-800 rounded-lg">
+                <span className="text-zinc-400 text-sm">Código:</span>
+                <span className="ml-2 text-white font-bold text-xl tracking-wider">{roomCode}</span>
               </div>
-            ))}
+              {isHost && (
+                <div className="px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400 text-sm font-bold">
+                  HOST
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* In-Game Menu Modal */}
-      {showMenu && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md p-6 animate-in fade-in duration-300">
-           <div className="bg-[#1c1c1e] p-10 rounded-[2rem] border border-zinc-700/50 shadow-2xl max-w-xs w-full flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 mb-2 italic">Opções</h3>
-              <button 
-                onClick={() => { playSound('select', isMuted); setShowMenu(false); }}
-                className="w-full bg-zinc-100 text-zinc-900 py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white active:scale-95 transition-all"
-              >
-                Continuar Jogando
-              </button>
-              <button 
-                onClick={quitGame}
-                className="w-full bg-red-950/20 text-red-500 border border-red-900/30 py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-900/20 active:scale-95 transition-all"
-              >
-                Desistir do Jogo
-              </button>
-           </div>
-        </div>
-      )}
-
-      {/* Reveal Overlay */}
-      {(gameState.phase === GamePhase.REVEALING || gameState.phase === GamePhase.RESOLVING) && !showMenu && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none px-6 bg-black/40 backdrop-blur-sm">
-          <div className="bg-[#1e1e1e]/98 backdrop-blur-3xl border border-zinc-700/60 p-8 md:p-10 rounded-3xl shadow-2xl flex flex-wrap justify-center items-center gap-6 md:gap-10 transition-all animate-in fade-in zoom-in duration-300 pointer-events-auto max-w-5xl">
-             {sortedRevealedPlayers.map(p => {
-               const isCurrent = gameState.currentTurnOrder[gameState.resolvingIndex]?.playerId === p.id;
-               const isHost = p.id === 'player';
-               return (
-                 <div key={p.id} className={`flex flex-col items-center gap-3 transition-all duration-300 ${isCurrent ? 'scale-110 md:scale-125 z-10' : 'scale-90 opacity-25'}`}>
-                    <span className={`text-[10px] md:text-[11px] uppercase font-black tracking-[0.2em] ${isHost ? 'text-amber-400' : 'text-zinc-400'}`}>
-                      {p.name}
-                    </span>
-                    {p.selectedCard && (
-                       <div className="w-[48px] h-[58px] md:w-20 md:h-24 flex items-center justify-center">
-                          <Card 
-                            value={p.selectedCard.value} 
-                            bulls={p.selectedCard.bulls} 
-                            isHighlighted={isCurrent}
-                            size={isHost ? 'large' : 'small'}
-                            isHost={isHost}
-                          />
-                       </div>
+          <div className="bg-zinc-800/50 rounded-lg p-6 space-y-4">
+            <h2 className="text-2xl font-bold text-white">Jogadores ({lobbyPlayers.length}/{MAX_PLAYERS})</h2>
+            
+            <div className="space-y-2">
+              {lobbyPlayers.map((player) => (
+                <div
+                  key={player.id}
+                  className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${player.isBot ? 'bg-purple-400' : 'bg-green-400'}`}></div>
+                    <span className="text-white font-medium">{player.name}</span>
+                    {player.id === playerId && (
+                      <span className="text-xs text-zinc-400">(você)</span>
                     )}
-                 </div>
-               );
-             })}
-          </div>
-        </div>
-      )}
-
-      {/* Final Results Modal */}
-      {gameState.phase === GamePhase.GAME_OVER && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] backdrop-blur-3xl p-6">
-          <div className="bg-[#1e1e1e] p-12 md:p-16 rounded-[2.5rem] border border-zinc-700 text-center shadow-2xl flex flex-col items-center max-w-md w-full">
-            <h2 className="text-3xl font-black tracking-[0.5em] text-white mb-12 uppercase italic border-b border-zinc-800 pb-6 w-full">Ranking</h2>
-            <div className="space-y-4 mb-14 w-full px-4">
-              {gameState.players.sort((a,b) => a.score - b.score).map((p, i) => (
-                <div key={p.id} className="flex justify-between items-center py-4 border-b border-zinc-800/40">
-                   <span className={`text-[13px] uppercase tracking-widest ${i === 0 ? 'text-amber-400 font-black' : 'text-zinc-400 font-bold'}`}>
-                     {i === 0 && '♛ '}{p.name}
-                   </span>
-                   <span className={`text-sm font-mono font-black ${i === 0 ? 'text-white' : 'text-zinc-500'}`}>{p.score}</span>
+                  </div>
+                  {isHost && player.id !== playerId && (
+                    <button
+                      onClick={() => removePlayer(player.id!)}
+                      className="px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition text-sm"
+                    >
+                      Remover
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
-            <button 
-              onClick={() => { playSound('select', isMuted); setView('HOME'); }}
-              className="w-full bg-zinc-100 text-zinc-900 py-6 rounded-3xl text-[12px] font-black hover:bg-white transition-all active:scale-95 uppercase tracking-[0.6em] shadow-lg"
+
+            {isHost && lobbyPlayers.length < MAX_PLAYERS && (
+              <button
+                onClick={addBot}
+                className="w-full px-4 py-3 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-lg font-bold hover:bg-purple-500/20 transition"
+              >
+                + Adicionar Bot
+              </button>
+            )}
+
+            {isHost && lobbyPlayers.length >= 2 && (
+              <button
+                onClick={startGame}
+                className="w-full px-6 py-4 bg-white text-zinc-900 rounded-lg font-bold text-lg hover:bg-zinc-100 transition"
+              >
+                Iniciar Jogo
+              </button>
+            )}
+
+            {!isHost && (
+              <div className="text-center text-zinc-400 text-sm py-4">
+                Aguardando o host iniciar o jogo...
+              </div>
+            )}
+          </div>
+
+          {errorMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+              {errorMessage}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Render GAME
+  if (view === 'GAME' && gameState) {
+    const currentPlayer = gameState.players.find(p => p.id === playerId);
+    const canSelectCard = gameState.phase === GamePhase.CHOOSING && currentPlayer && !currentPlayer.selectedCard;
+    const canSelectRow = gameState.phase === GamePhase.CHOOSING_ROW;
+
+    return (
+      <div className="h-screen w-screen flex flex-col bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 overflow-hidden">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
+          <button
+            onClick={resetGame}
+            className="px-3 py-1.5 bg-zinc-800 text-white rounded-lg text-sm hover:bg-zinc-700 transition"
+          >
+            ← Sair
+          </button>
+          <div className="text-center">
+            <div className="text-sm text-zinc-400">{gameState.message}</div>
+          </div>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="px-3 py-1.5 bg-zinc-800 text-white rounded-lg text-sm hover:bg-zinc-700 transition"
+          >
+            ⚙️
+          </button>
+        </div>
+
+        {showMenu && (
+          <div className="absolute top-14 right-4 z-50 bg-zinc-800 rounded-lg shadow-xl p-4 space-y-2 border border-zinc-700">
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="w-full px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600 transition text-sm"
             >
-              Menu Inicial
+              {isMuted ? '🔇 Som desligado' : '🔊 Som ligado'}
+            </button>
+            <button
+              onClick={() => setShowMenu(false)}
+              className="w-full px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600 transition text-sm"
+            >
+              Fechar
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Shuffle/Preparation Overlay */}
-      {gameState.phase === GamePhase.BETWEEN_ROUNDS && (
-        <div className="fixed inset-0 flex items-center justify-center bg-zinc-900/95 backdrop-blur-2xl z-[90] animate-in fade-in duration-1000">
-          <div className="flex flex-col items-center gap-10">
-            <div className="text-zinc-400 text-[12px] font-black tracking-[1em] uppercase italic opacity-60">Misturando Deck...</div>
-            <div className="w-80 h-[2px] bg-zinc-800 rounded-full overflow-hidden shadow-inner">
-               <div className="h-full bg-white animate-progress"></div>
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+          <div className="flex-1 flex flex-col gap-4 overflow-auto custom-scrollbar">
+            <div className="space-y-3">
+              {gameState.rows.map((row, idx) => (
+                <TableRow
+                  key={idx}
+                  row={row}
+                  rowIndex={idx}
+                  isHighlighted={takenRowIndex === idx}
+                  canSelect={canSelectRow}
+                  onSelect={() => chooseRowToTake(idx)}
+                />
+              ))}
             </div>
           </div>
+
+          <div className="flex-shrink-0 w-full lg:w-80 space-y-4">
+            <ScoreBoard players={gameState.players} currentPlayerId={playerId} />
+
+            {currentPlayer && (
+              <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-bold">Sua Mão</h3>
+                  <span className="text-zinc-400 text-sm">{currentPlayer.hand.length} cartas</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {currentPlayer.hand.map((card) => (
+                    <Card
+                      key={card.value}
+                      card={card}
+                      onClick={() => canSelectCard && selectPlayerCard(card)}
+                      isSelected={currentPlayer.selectedCard?.value === card.value}
+                      isDisabled={!canSelectCard}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
-  );
+
+        {gameState.phase === GamePhase.GAME_OVER && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-zinc-800 rounded-lg p-8 max-w-md w-full space-y-6">
+              <h2 className="text-3xl font-black text-white text-center">Fim do Jogo!</h2>
+              <div className="space-y-2">
+                {[...gameState.players].sort((a, b) => a.score - b.score).map((player, idx) => (
+                  <div
+                    key={player.id}
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      idx === 0 ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{idx === 0 ? '🏆' : `${idx + 1}º`}</span>
+                      <span className="text-white font-bold">{player.name}</span>
+                    </div>
+                    <span className="text-white font-bold">{player.score} pts</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={resetGame}
+                className="w-full px-6 py-3 bg-white text-zinc-900 rounded-lg font-bold hover:bg-zinc-100 transition"
+              >
+                Voltar ao Início
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default App;
