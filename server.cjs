@@ -3,6 +3,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// Verificar se o diretório dist existe
+const distPath = path.join(__dirname, 'dist');
+if (!fs.existsSync(distPath)) {
+    console.error('ERRO: Diretório dist não encontrado!');
+    console.error('Execute "npm run build" antes de iniciar o servidor.');
+    process.exit(1);
+}
+
 // Servidor HTTP para servir arquivos estáticos do build
 const httpServer = http.createServer((req, res) => {
     // Determinar o caminho do arquivo
