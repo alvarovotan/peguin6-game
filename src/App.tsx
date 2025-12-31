@@ -155,16 +155,14 @@ const App: React.FC = () => {
           break;
           
         case 'GAME_STARTED':
-          const initialPlayers: Player[] = data.payload.players.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            isBot: p.isBot || false,
-            score: 0,
-            hand: [],
-            selectedCard: null
-          }));
-          startNewRound(initialPlayers);
+          console.log('GAME_STARTED:', data.payload);
+          setGameState(data.payload.gameState);
           setView('GAME');
+          break;
+          
+        case 'GAME_STATE_UPDATE':
+          console.log('GAME_STATE_UPDATE:', data.payload);
+          setGameState(data.payload.gameState);
           break;
       }
     };
@@ -284,7 +282,7 @@ const App: React.FC = () => {
     }) : null);
   };
 
-  useEffect(() => {
+  /* /* useEffect(() => {
     if (gameState?.phase === GamePhase.REVEALING) {
       playSound('reveal', isMuted);
       const timeout = setTimeout(() => {
@@ -302,7 +300,7 @@ const App: React.FC = () => {
       }, 800);
       return () => clearTimeout(timeout);
     }
-  }, [gameState?.phase, isMuted]);
+  }, [gameState?.phase, isMuted]); */
 
   const resolveNextCard = useCallback(() => {
     setGameState(prev => {
