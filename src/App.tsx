@@ -239,6 +239,45 @@ const App: React.FC = () => {
     }
   };
 
+  // Bot plays automatically
+  useEffect(() => {
+    if (!gameState || gameState.phase !== GamePhase.CHOOSING) return;
+    if (waitingForPlayers) return;
+    
+    // Check if any bot needs to play
+    const botsNeedingToPlay = gameState.players.filter(p => 
+      p.isBot && !p.selectedCard && p.hand.length > 0
+    );
+    
+    if (botsNeedingToPlay.length > 0) {
+      const timer = setTimeout(() => {
+        botsNeedingToPlay.forEach(bot => {
+          // Bot chooses a random card
+          const randomCard = bot.hand[Math.floor(Math.random() * bot.hand.length)];
+          
+          setGameState(prev => prev ? {
+            ...prev,
+            players: prev.players.map(p => 
+              p.id === bot.id
+                ? { ...p, hand: p.hand.filter(c => c.value !== randomCard.value), selectedCard: randomCard }
+                : p
+            )
+          } : null);
+          
+          // Send to server
+          if (ws && wsConnected) {
+            ws.send(JSON.stringify({
+              type: 'PLAY_CARD',
+              payload: { playerId: bot.id, card: randomCard }
+            }));
+          }
+        });
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, waitingForPlayers, ws, wsConnected]);
+
   const selectPlayerCard = (card: CardType) => {
     if (!gameState || gameState.phase !== GamePhase.CHOOSING) return;
     if (waitingForPlayers) return;
