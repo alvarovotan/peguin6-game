@@ -1,9 +1,9 @@
 services:
   - type: web
     name: peguin6-game
-    env: node
+    runtime: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: node server.cjs
     envVars:
       - key: NODE_VERSION
-        value: 18.17.0
+        value: 22.13.0
