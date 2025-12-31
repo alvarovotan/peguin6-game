@@ -6,6 +6,14 @@ import Card from './components/Card';
 import TableRow from './components/TableRow';
 import ScoreBoard from './components/ScoreBoard';
 
+
+// WebSocket URL
+const getWebSocketUrl = () => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  return `${protocol}//${host}/ws`;
+};
+
 const WINNING_SCORE = 66;
 const MAX_PLAYERS = 10;
 
@@ -99,43 +107,109 @@ const App: React.FC = () => {
   ]);
   const [roomCode, setRoomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [inputCode, setInputCode] = useState('');
+  const [playerId, setPlayerId] = useState<string>("");
+  const [isHost, setIsHost] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [takenRowIndex, setTakenRowIndex] = useState<number | null>(null);
 
+  // Conectar WebSocket
+  useEffect(() => {
+    const ws = new WebSocket(getWebSocketUrl());
+    
+    ws.onopen = () => {
+      console.log('WebSocket conectado');
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('Recebido:', data);
+      
+      switch (data.type) {
+        case 'ROOM_CREATED':
+          setPlayerId(data.payload.playerId);
+          setRoomCode(data.payload.roomId);
+          setIsHost(true);
+          setLobbyPlayers([{ id: data.payload.playerId, name: playerName, isBot: false, score: 0 }]);
+          setView('LOBBY');
+          break;
+          
+        case 'JOIN_CONFIRMED':
+          setPlayerId(data.payload.playerId);
+          setRoomCode(data.payload.roomId);
+          setIsHost(false);
+          setView('LOBBY');
+          break;
+          
+        case 'PLAYER_JOINED':
+          setLobbyPlayers(data.payload.players);
+          break;
+          
+        case 'PLAYER_LEFT':
+          setLobbyPlayers(data.payload.players);
+          break;
+          
+        case 'BOTS_UPDATED':
+          setLobbyPlayers(data.payload.players);
+          break;
+          
+        case 'GAME_STARTED':
+          const initialPlayers: Player[] = data.payload.players.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            isBot: p.isBot || false,
+            score: 0,
+            hand: [],
+            selectedCard: null
+          }));
+          startNewRound(initialPlayers);
+          setView('GAME');
+          break;
+      }
+    };
+    
+    wsRef.current = ws;
+    
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  const sendMessage = (type: string, payload: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type, payload }));
+    }
+  };
+
   const handleCreateRoom = () => {
     playSound('select', isMuted);
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(newCode);
-    setLobbyPlayers([{ id: 'player', name: playerName, isBot: false, score: 0 }]);
-    setView('LOBBY');
+    sendMessage('CREATE_ROOM', { playerName });
   };
 
   const handleJoinRoom = () => {
     if (inputCode.length < 4) return;
     playSound('select', isMuted);
-    setRoomCode(inputCode.toUpperCase());
-    // Simulate joining an existing room with one player "Amigo"
-    setLobbyPlayers([
-      { id: 'friend', name: 'Amigo', isBot: false, score: 0 },
-      { id: 'player', name: playerName, isBot: false, score: 0 }
-    ]);
-    setView('LOBBY');
+    sendMessage('JOIN_ROOM', { roomId: inputCode.toUpperCase(), playerName });
   };
 
   const addBot = () => {
     playSound('select', isMuted);
     if (lobbyPlayers.length >= MAX_PLAYERS) return;
-    setLobbyPlayers(prev => [
-      ...prev,
-      { id: `bot-${prev.length}`, name: `Bot ${prev.length + 1}`, isBot: true, score: 0 }
-    ]);
+    const newPlayers = [
+      ...lobbyPlayers,
+      { id: `bot-${Date.now()}`, name: `Bot ${lobbyPlayers.filter(p => p.isBot).length + 1}`, isBot: true, score: 0 }
+    ];
+    setLobbyPlayers(newPlayers);
+    sendMessage('UPDATE_BOTS', { players: newPlayers });
   };
 
   const removePlayer = (id: string) => {
     playSound('penalty', isMuted);
-    if (id === 'player') return;
-    setLobbyPlayers(prev => prev.filter(p => p.id !== id));
+    if (id === playerId) return;
+    const newPlayers = lobbyPlayers.filter(p => p.id !== id);
+    setLobbyPlayers(newPlayers);
+    sendMessage('UPDATE_BOTS', { players: newPlayers });
   };
 
   const startNewRound = useCallback((currentPlayers: Player[]) => {
@@ -166,6 +240,7 @@ const App: React.FC = () => {
   }, [isMuted]);
 
   const startGame = () => {
+    if (!isHost) return;
     playSound('select', isMuted);
     const initialPlayers: Player[] = lobbyPlayers.map(p => ({
       id: p.id!,
@@ -175,8 +250,7 @@ const App: React.FC = () => {
       hand: [],
       selectedCard: null
     }));
-    startNewRound(initialPlayers);
-    setView('GAME');
+    sendMessage('START_GAME', { players: lobbyPlayers });
   };
 
   const selectPlayerCard = (card: CardType) => {
