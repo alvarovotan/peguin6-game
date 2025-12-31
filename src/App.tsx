@@ -282,7 +282,7 @@ const App: React.FC = () => {
     }) : null);
   };
 
-  /* /* useEffect(() => {
+  // useEffect(() => {
     if (gameState?.phase === GamePhase.REVEALING) {
       playSound('reveal', isMuted);
       const timeout = setTimeout(() => {
@@ -300,7 +300,7 @@ const App: React.FC = () => {
       }, 800);
       return () => clearTimeout(timeout);
     }
-  }, [gameState?.phase, isMuted]); */
+  // }, [gameState?.phase, isMuted]);
 
   const resolveNextCard = useCallback(() => {
     setGameState(prev => {

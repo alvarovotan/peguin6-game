@@ -113,14 +113,17 @@ function resolveCard(room, card, playerId) {
     const gameState = room.gameState;
     const rowEnds = gameState.rows.map(r => r[r.length - 1].value);
     
+    // Encontrar fileira válida
     const validRows = rowEnds
         .map((end, idx) => ({ idx, end, diff: card.value - end }))
         .filter(r => r.diff > 0)
         .sort((a, b) => a.diff - b.diff);
 
     if (validRows.length > 0) {
+        // Colocar na fileira com menor diferença
         const targetRow = validRows[0].idx;
         if (gameState.rows[targetRow].length === 5) {
+            // Fileira cheia - jogador pega penalidade
             const penalty = gameState.rows[targetRow].reduce((sum, c) => sum + c.bulls, 0);
             const player = gameState.players.find(p => p.id === playerId);
             if (player) player.score += penalty;
@@ -129,6 +132,8 @@ function resolveCard(room, card, playerId) {
             gameState.rows[targetRow].push(card);
         }
     } else {
+        // Carta menor que todas - jogador escolhe fileira para substituir
+        // Por simplicidade, pega a fileira com menos pontos
         const minRow = gameState.rows.reduce((min, row, idx) => {
             const points = row.reduce((sum, c) => sum + c.bulls, 0);
             return points < min.points ? { idx, points } : min;
@@ -144,6 +149,7 @@ function resolveCard(room, card, playerId) {
 function broadcastGameState(room) {
     room.players.forEach(p => {
         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+            const playerInGame = room.gameState.players.find(gp => gp.id === p.id);
             const playerState = {
                 ...room.gameState,
                 players: room.gameState.players.map(gp => ({
@@ -162,63 +168,6 @@ function broadcastGameState(room) {
             }));
         }
     });
-}
-
-async function resolveCardsGradually(room) {
-    const gameState = room.gameState;
-    
-    // Fase REVEALING - mostrar modal com cartas
-    gameState.phase = 'REVEALING';
-    gameState.message = 'Revelando cartas...';
-    broadcastGameState(room);
-    
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    // Ordenar cartas
-    const turnOrder = gameState.players
-        .map(p => ({ playerId: p.id, card: p.selectedCard }))
-        .sort((a, b) => a.card.value - b.card.value);
-    
-    gameState.currentTurnOrder = turnOrder;
-    gameState.phase = 'RESOLVING';
-    gameState.resolvingIndex = 0;
-    gameState.message = 'Processando...';
-    
-    // Resolver carta por carta com delay
-    for (let i = 0; i < turnOrder.length; i++) {
-        gameState.resolvingIndex = i;
-        resolveCard(room, turnOrder[i].card, turnOrder[i].playerId);
-        broadcastGameState(room);
-        await new Promise(resolve => setTimeout(resolve, 600));
-    }
-    
-    // Limpar cartas selecionadas
-    gameState.players.forEach(p => p.selectedCard = null);
-    
-    // Verificar fim de rodada
-    const allHandsEmpty = gameState.players.every(p => p.hand.length === 0);
-    
-    if (allHandsEmpty) {
-        const loser = gameState.players.find(p => p.score >= 66);
-        if (loser) {
-            gameState.phase = 'GAME_OVER';
-            gameState.message = `Fim de jogo! ${loser.name} perdeu com ${loser.score} pontos.`;
-            broadcastGameState(room);
-        } else {
-            // Nova rodada
-            gameState.phase = 'BETWEEN_ROUNDS';
-            gameState.message = 'Preparando nova rodada...';
-            broadcastGameState(room);
-            
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            startNewRound(room);
-            broadcastGameState(room);
-        }
-    } else {
-        gameState.phase = 'CHOOSING';
-        gameState.message = 'Escolha sua carta';
-        broadcastGameState(room);
-    }
 }
 
 wss.on('connection', (ws) => {
@@ -322,6 +271,7 @@ wss.on('connection', (ws) => {
                     const gameState = startNewRound(startRoom);
                     console.log('Jogo iniciado, distribuindo cartas...');
                     
+                    // Enviar estado para cada jogador
                     startRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
                             const playerInGame = gameState.players.find(gp => gp.id === p.id);
@@ -368,14 +318,46 @@ wss.on('connection', (ws) => {
                         }
                     });
 
+                    // Verificar se todos jogaram
                     const allPlayed = playRoom.gameState.players.every(p => p.selectedCard);
                     
                     if (allPlayed) {
-                        console.log('Todos jogaram, iniciando resolução gradual...');
-                        resolveCardsGradually(playRoom);
-                    } else {
-                        broadcastGameState(playRoom);
+                        console.log('Todos jogaram, resolvendo...');
+                        // Resolver em ordem crescente
+                        const turnOrder = playRoom.gameState.players
+                            .map(p => ({ playerId: p.id, card: p.selectedCard }))
+                            .sort((a, b) => a.card.value - b.card.value);
+
+                        // Resolver cada carta
+                        turnOrder.forEach(turn => {
+                            resolveCard(playRoom, turn.card, turn.playerId);
+                        });
+
+                        // Limpar cartas selecionadas
+                        playRoom.gameState.players.forEach(p => p.selectedCard = null);
+
+                        // Verificar fim de rodada
+                        const allHandsEmpty = playRoom.gameState.players.every(p => p.hand.length === 0);
+                        if (allHandsEmpty) {
+                            // Verificar se alguém perdeu
+                            const loser = playRoom.gameState.players.find(p => p.score >= 66);
+                            if (loser) {
+                                playRoom.gameState.phase = 'GAME_OVER';
+                                playRoom.gameState.message = `Fim de jogo! ${loser.name} perdeu com ${loser.score} pontos.`;
+                            } else {
+                                // Nova rodada
+                                setTimeout(() => {
+                                    startNewRound(playRoom);
+                                    broadcastGameState(playRoom);
+                                }, 2000);
+                            }
+                        } else {
+                            playRoom.gameState.phase = 'CHOOSING';
+                            playRoom.gameState.message = 'Escolha sua carta';
+                        }
                     }
+
+                    broadcastGameState(playRoom);
                     break;
             }
         } catch (error) {
