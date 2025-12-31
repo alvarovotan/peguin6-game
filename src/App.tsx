@@ -6,14 +6,6 @@ import Card from './components/Card';
 import TableRow from './components/TableRow';
 import ScoreBoard from './components/ScoreBoard';
 
-
-// WebSocket URL
-const getWebSocketUrl = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/ws`;
-};
-
 const WINNING_SCORE = 66;
 const MAX_PLAYERS = 10;
 
@@ -107,107 +99,43 @@ const App: React.FC = () => {
   ]);
   const [roomCode, setRoomCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [inputCode, setInputCode] = useState('');
-  const [playerId, setPlayerId] = useState<string>("");
-  const [isHost, setIsHost] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [takenRowIndex, setTakenRowIndex] = useState<number | null>(null);
 
-  // Conectar WebSocket
-  useEffect(() => {
-    const ws = new WebSocket(getWebSocketUrl());
-    
-    ws.onopen = () => {
-      console.log('WebSocket conectado');
-    };
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('Recebido:', data);
-      
-      switch (data.type) {
-        case 'ROOM_CREATED':
-          setPlayerId(data.payload.playerId);
-          setRoomCode(data.payload.roomId);
-          setIsHost(true);
-          setLobbyPlayers([{ id: data.payload.playerId, name: playerName, isBot: false, score: 0 }]);
-          setView('LOBBY');
-          break;
-          
-        case 'JOIN_CONFIRMED':
-          setPlayerId(data.payload.playerId);
-          setRoomCode(data.payload.roomId);
-          setIsHost(false);
-          setView('LOBBY');
-          break;
-          
-        case 'PLAYER_JOINED':
-          setLobbyPlayers(data.payload.players);
-          break;
-          
-        case 'PLAYER_LEFT':
-          setLobbyPlayers(data.payload.players);
-          break;
-          
-        case 'BOTS_UPDATED':
-          setLobbyPlayers(data.payload.players);
-          break;
-          
-        case 'GAME_STARTED':
-          console.log('GAME_STARTED:', data.payload);
-          setGameState(data.payload.gameState);
-          setView('GAME');
-          break;
-          
-        case 'GAME_STATE_UPDATE':
-          console.log('GAME_STATE_UPDATE:', data.payload);
-          setGameState(data.payload.gameState);
-          break;
-      }
-    };
-    
-    wsRef.current = ws;
-    
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  const sendMessage = (type: string, payload: any) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }));
-    }
-  };
-
   const handleCreateRoom = () => {
     playSound('select', isMuted);
-    sendMessage('CREATE_ROOM', { playerName });
+    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    setRoomCode(newCode);
+    setLobbyPlayers([{ id: 'player', name: playerName, isBot: false, score: 0 }]);
+    setView('LOBBY');
   };
 
   const handleJoinRoom = () => {
     if (inputCode.length < 4) return;
     playSound('select', isMuted);
-    sendMessage('JOIN_ROOM', { roomId: inputCode.toUpperCase(), playerName });
+    setRoomCode(inputCode.toUpperCase());
+    // Simulate joining an existing room with one player "Amigo"
+    setLobbyPlayers([
+      { id: 'friend', name: 'Amigo', isBot: false, score: 0 },
+      { id: 'player', name: playerName, isBot: false, score: 0 }
+    ]);
+    setView('LOBBY');
   };
 
   const addBot = () => {
     playSound('select', isMuted);
     if (lobbyPlayers.length >= MAX_PLAYERS) return;
-    const newPlayers = [
-      ...lobbyPlayers,
-      { id: `bot-${Date.now()}`, name: `Bot ${lobbyPlayers.filter(p => p.isBot).length + 1}`, isBot: true, score: 0 }
-    ];
-    setLobbyPlayers(newPlayers);
-    sendMessage('UPDATE_BOTS', { players: newPlayers });
+    setLobbyPlayers(prev => [
+      ...prev,
+      { id: `bot-${prev.length}`, name: `Bot ${prev.length + 1}`, isBot: true, score: 0 }
+    ]);
   };
 
   const removePlayer = (id: string) => {
     playSound('penalty', isMuted);
-    if (id === playerId) return;
-    const newPlayers = lobbyPlayers.filter(p => p.id !== id);
-    setLobbyPlayers(newPlayers);
-    sendMessage('UPDATE_BOTS', { players: newPlayers });
+    if (id === 'player') return;
+    setLobbyPlayers(prev => prev.filter(p => p.id !== id));
   };
 
   const startNewRound = useCallback((currentPlayers: Player[]) => {
@@ -238,7 +166,6 @@ const App: React.FC = () => {
   }, [isMuted]);
 
   const startGame = () => {
-    if (!isHost) return;
     playSound('select', isMuted);
     const initialPlayers: Player[] = lobbyPlayers.map(p => ({
       id: p.id!,
@@ -248,7 +175,8 @@ const App: React.FC = () => {
       hand: [],
       selectedCard: null
     }));
-    sendMessage('START_GAME', { players: lobbyPlayers });
+    startNewRound(initialPlayers);
+    setView('GAME');
   };
 
   const selectPlayerCard = (card: CardType) => {
@@ -282,7 +210,7 @@ const App: React.FC = () => {
     }) : null);
   };
 
-  // useEffect(() => {
+  useEffect(() => {
     if (gameState?.phase === GamePhase.REVEALING) {
       playSound('reveal', isMuted);
       const timeout = setTimeout(() => {
@@ -300,7 +228,7 @@ const App: React.FC = () => {
       }, 800);
       return () => clearTimeout(timeout);
     }
-  // }, [gameState?.phase, isMuted]);
+  }, [gameState?.phase, isMuted]);
 
   const resolveNextCard = useCallback(() => {
     setGameState(prev => {
@@ -507,30 +435,17 @@ const App: React.FC = () => {
               <h1 className="text-3xl font-black text-white uppercase italic">Inserir Código</h1>
            </div>
            <div className="space-y-4">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 px-1">Seu Nome</label>
-                <input 
-                  type="text" 
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Digite seu nome"
-                  className="w-full bg-zinc-800/40 border border-zinc-700 rounded-xl p-5 text-sm font-bold tracking-widest focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-600 shadow-md"
-                />
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 px-1">Código da Sala</label>
-                <input 
-                  type="text" 
-                  maxLength={6}
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  placeholder="Ex: A1B2C3"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-5 text-center text-lg font-mono font-bold tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-700 shadow-inner"
-                />
-              </div>
+              <input 
+                type="text" 
+                maxLength={6}
+                value={inputCode}
+                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                placeholder="Ex: A1B2C3"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-5 text-center text-lg font-mono font-bold tracking-[0.3em] focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-all text-white placeholder-zinc-700 shadow-inner"
+              />
               <button 
                 onClick={handleJoinRoom}
-                disabled={inputCode.length < 4 || playerName.trim().length === 0}
+                disabled={inputCode.length < 4}
                 className="w-full bg-zinc-100 text-zinc-900 p-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] hover:bg-white transition-all active:scale-95 disabled:opacity-20 shadow-lg"
               >
                 Entrar
@@ -644,7 +559,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 w-full flex justify-center bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-800/60 z-30 pt-4 pb-6 shadow-2xl">
         <div className="w-full max-w-6xl px-4 overflow-x-auto no-scrollbar">
           <div className="flex flex-nowrap justify-start md:justify-center gap-3 lg:gap-4 min-w-max md:min-w-0 mx-auto px-4">
-            {gameState.players.find(p => p.id === playerId)?.hand.map(card => (
+            {gameState.players.find(p => p.id === 'player')?.hand.map(card => (
               <div key={card.value} className="flex-shrink-0">
                 <Card 
                   value={card.value}
