@@ -3,21 +3,31 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// Verificar se o diretório dist existe
 const distPath = path.join(__dirname, 'dist');
 if (!fs.existsSync(distPath)) {
     console.error('ERRO: Diretório dist não encontrado!');
     process.exit(1);
 }
 
+// Servidor HTTP
 const httpServer = http.createServer((req, res) => {
     let filePath = path.join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url);
-    if (!fs.existsSync(filePath)) filePath = path.join(__dirname, 'dist', 'index.html');
+    
+    if (!fs.existsSync(filePath)) {
+        filePath = path.join(__dirname, 'dist', 'index.html');
+    }
 
     const extname = path.extname(filePath);
     const mimeTypes = {
-        '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-        '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpg',
-        '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
+        '.html': 'text/html',
+        '.js': 'text/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpg',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon'
     };
     
     const contentType = mimeTypes[extname] || 'application/octet-stream';
@@ -25,7 +35,7 @@ const httpServer = http.createServer((req, res) => {
     fs.readFile(filePath, (err, data) => {
         if (err) {
             res.writeHead(err.code === 'ENOENT' ? 404 : 500);
-            res.end(err.code === 'ENOENT' ? '404' : 'Erro');
+            res.end(err.code === 'ENOENT' ? '404' : 'Erro no servidor');
         } else {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(data);
@@ -33,8 +43,10 @@ const httpServer = http.createServer((req, res) => {
     });
 });
 
+// Servidor WebSocket
 const wss = new WebSocket.Server({ server: httpServer, path: '/ws' });
-const rooms = new Map();
+
+const rooms = new Map(); // roomId -> { players, gameState, hostId }
 
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -44,6 +56,7 @@ function generatePlayerId() {
     return Math.random().toString(36).substring(2, 15);
 }
 
+// Criar baralho
 function createDeck() {
     const cards = [];
     for (let i = 1; i <= 104; i++) {
@@ -57,6 +70,7 @@ function createDeck() {
     return cards;
 }
 
+// Embaralhar
 function shuffle(array) {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -66,14 +80,12 @@ function shuffle(array) {
     return arr;
 }
 
+// Iniciar nova rodada
 function startNewRound(room) {
     const deck = shuffle(createDeck());
     const players = room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        isBot: p.isBot || false,
-        score: p.score || 0,
-        hand: deck.splice(0, 10).sort((a, b) => a.value - b.value),
+        ...p,
+        hand: p.isBot ? deck.splice(0, 10).sort((a, b) => a.value - b.value) : deck.splice(0, 10).sort((a, b) => a.value - b.value),
         selectedCard: null
     }));
 
@@ -96,6 +108,7 @@ function startNewRound(room) {
     return room.gameState;
 }
 
+// Processar jogada de bot
 function processBotMove(gameState, botPlayer) {
     const rowEnds = gameState.rows.map(r => r[r.length - 1].value);
     const bestCard = botPlayer.hand.reduce((prev, curr) => {
@@ -109,69 +122,8 @@ function processBotMove(gameState, botPlayer) {
     return Math.random() > 0.8 ? botPlayer.hand[Math.floor(Math.random() * botPlayer.hand.length)] : bestCard;
 }
 
-function resolveCard(room, card, playerId) {
-    const gameState = room.gameState;
-    const rowEnds = gameState.rows.map(r => r[r.length - 1].value);
-    
-    // Encontrar fileira válida
-    const validRows = rowEnds
-        .map((end, idx) => ({ idx, end, diff: card.value - end }))
-        .filter(r => r.diff > 0)
-        .sort((a, b) => a.diff - b.diff);
-
-    if (validRows.length > 0) {
-        // Colocar na fileira com menor diferença
-        const targetRow = validRows[0].idx;
-        if (gameState.rows[targetRow].length === 5) {
-            // Fileira cheia - jogador pega penalidade
-            const penalty = gameState.rows[targetRow].reduce((sum, c) => sum + c.bulls, 0);
-            const player = gameState.players.find(p => p.id === playerId);
-            if (player) player.score += penalty;
-            gameState.rows[targetRow] = [card];
-        } else {
-            gameState.rows[targetRow].push(card);
-        }
-    } else {
-        // Carta menor que todas - jogador escolhe fileira para substituir
-        // Por simplicidade, pega a fileira com menos pontos
-        const minRow = gameState.rows.reduce((min, row, idx) => {
-            const points = row.reduce((sum, c) => sum + c.bulls, 0);
-            return points < min.points ? { idx, points } : min;
-        }, { idx: 0, points: 999 });
-        
-        const penalty = gameState.rows[minRow.idx].reduce((sum, c) => sum + c.bulls, 0);
-        const player = gameState.players.find(p => p.id === playerId);
-        if (player) player.score += penalty;
-        gameState.rows[minRow.idx] = [card];
-    }
-}
-
-function broadcastGameState(room) {
-    room.players.forEach(p => {
-        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-            const playerInGame = room.gameState.players.find(gp => gp.id === p.id);
-            const playerState = {
-                ...room.gameState,
-                players: room.gameState.players.map(gp => ({
-                    id: gp.id,
-                    name: gp.name,
-                    isBot: gp.isBot,
-                    score: gp.score,
-                    hand: gp.id === p.id ? gp.hand : [],
-                    selectedCard: gp.selectedCard
-                }))
-            };
-            
-            p.ws.send(JSON.stringify({
-                type: 'GAME_STATE_UPDATE',
-                payload: { gameState: playerState }
-            }));
-        }
-    });
-}
-
 wss.on('connection', (ws) => {
-    console.log('Nova conexão');
+    console.log('Nova conexão WebSocket');
     let playerId = null;
     let roomId = null;
 
@@ -191,7 +143,7 @@ wss.on('connection', (ws) => {
                         hostId: playerId
                     });
 
-                    console.log(`Sala ${roomId} criada`);
+                    console.log(`Sala criada: ${roomId}`);
                     ws.send(JSON.stringify({
                         type: 'ROOM_CREATED',
                         payload: { roomId, playerId, playerName: payload.playerName }
@@ -245,6 +197,7 @@ wss.on('connection', (ws) => {
                     const botRoom = rooms.get(roomId);
                     if (botRoom.hostId !== playerId) return;
 
+                    // Atualizar lista de jogadores com bots
                     const humanPlayers = botRoom.players.filter(p => !p.isBot);
                     const newPlayers = payload.players.map(p => {
                         const existing = humanPlayers.find(hp => hp.id === p.id);
@@ -269,12 +222,10 @@ wss.on('connection', (ws) => {
                     if (startRoom.hostId !== playerId) return;
 
                     const gameState = startNewRound(startRoom);
-                    console.log('Jogo iniciado, distribuindo cartas...');
                     
-                    // Enviar estado para cada jogador
+                    // Enviar estado do jogo para cada jogador
                     startRoom.players.forEach(p => {
                         if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-                            const playerInGame = gameState.players.find(gp => gp.id === p.id);
                             const playerState = {
                                 ...gameState,
                                 players: gameState.players.map(gp => ({
@@ -282,12 +233,11 @@ wss.on('connection', (ws) => {
                                     name: gp.name,
                                     isBot: gp.isBot,
                                     score: gp.score,
-                                    hand: gp.id === p.id ? gp.hand : [],
+                                    hand: gp.id === p.id ? gp.hand : [], // Só envia mão para o próprio jogador
                                     selectedCard: null
                                 }))
                             };
                             
-                            console.log(`Enviando para ${p.name}: ${playerInGame ? playerInGame.hand.length : 0} cartas`);
                             p.ws.send(JSON.stringify({
                                 type: 'GAME_STARTED',
                                 payload: { gameState: playerState }
@@ -307,14 +257,11 @@ wss.on('connection', (ws) => {
                     player.selectedCard = payload.card;
                     player.hand = player.hand.filter(c => c.value !== payload.card.value);
 
-                    console.log(`${player.name} jogou ${payload.card.value}`);
-
-                    // Bots jogam
+                    // Processar jogadas dos bots
                     playRoom.gameState.players.forEach(p => {
-                        if (p.isBot && !p.selectedCard && p.hand.length > 0) {
+                        if (p.isBot && !p.selectedCard) {
                             p.selectedCard = processBotMove(playRoom.gameState, p);
                             p.hand = p.hand.filter(c => c.value !== p.selectedCard.value);
-                            console.log(`${p.name} (bot) jogou ${p.selectedCard.value}`);
                         }
                     });
 
@@ -322,42 +269,35 @@ wss.on('connection', (ws) => {
                     const allPlayed = playRoom.gameState.players.every(p => p.selectedCard);
                     
                     if (allPlayed) {
-                        console.log('Todos jogaram, resolvendo...');
-                        // Resolver em ordem crescente
-                        const turnOrder = playRoom.gameState.players
+                        // Todos jogaram, iniciar resolução
+                        playRoom.gameState.phase = 'REVEALING';
+                        playRoom.gameState.currentTurnOrder = playRoom.gameState.players
                             .map(p => ({ playerId: p.id, card: p.selectedCard }))
                             .sort((a, b) => a.card.value - b.card.value);
-
-                        // Resolver cada carta
-                        turnOrder.forEach(turn => {
-                            resolveCard(playRoom, turn.card, turn.playerId);
-                        });
-
-                        // Limpar cartas selecionadas
-                        playRoom.gameState.players.forEach(p => p.selectedCard = null);
-
-                        // Verificar fim de rodada
-                        const allHandsEmpty = playRoom.gameState.players.every(p => p.hand.length === 0);
-                        if (allHandsEmpty) {
-                            // Verificar se alguém perdeu
-                            const loser = playRoom.gameState.players.find(p => p.score >= 66);
-                            if (loser) {
-                                playRoom.gameState.phase = 'GAME_OVER';
-                                playRoom.gameState.message = `Fim de jogo! ${loser.name} perdeu com ${loser.score} pontos.`;
-                            } else {
-                                // Nova rodada
-                                setTimeout(() => {
-                                    startNewRound(playRoom);
-                                    broadcastGameState(playRoom);
-                                }, 2000);
-                            }
-                        } else {
-                            playRoom.gameState.phase = 'CHOOSING';
-                            playRoom.gameState.message = 'Escolha sua carta';
-                        }
+                        playRoom.gameState.resolvingIndex = 0;
                     }
 
-                    broadcastGameState(playRoom);
+                    // Broadcast estado atualizado
+                    playRoom.players.forEach(p => {
+                        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+                            const playerState = {
+                                ...playRoom.gameState,
+                                players: playRoom.gameState.players.map(gp => ({
+                                    id: gp.id,
+                                    name: gp.name,
+                                    isBot: gp.isBot,
+                                    score: gp.score,
+                                    hand: gp.id === p.id ? gp.hand : [],
+                                    selectedCard: gp.selectedCard
+                                }))
+                            };
+                            
+                            p.ws.send(JSON.stringify({
+                                type: 'GAME_STATE_UPDATE',
+                                payload: { gameState: playerState }
+                            }));
+                        }
+                    });
                     break;
             }
         } catch (error) {
@@ -366,12 +306,13 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
+        console.log(`Conexão fechada: ${playerId}`);
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
             room.players = room.players.filter(p => p.id !== playerId);
+            
             if (room.players.length === 0) {
                 rooms.delete(roomId);
-                console.log(`Sala ${roomId} removida`);
             }
         }
     });
